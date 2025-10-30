@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Login{% endblock %}
+
+{% block auth_content %}
+<div class="login-container">
+    <div class="col-md-4 mx-auto">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <h3 class="card-title text-center mb-4">
+                    <img src="{% static 'images/logo.png' %}" alt="Logo" class="navbar-brand-logo">
+                    Audio Verifier
+                </h3>
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </button>
+                </form>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        New user? <a href="{% url 'register' %}">Register here</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer mt-5 text-center">
+    <div class="container">
+        <span>&copy; {{ year }} Powered by ICFOSS</span>
+    </div>
+</footer>
+{% endblock %}

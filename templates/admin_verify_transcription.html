@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Admin Verification{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Review Transcription</h1>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</a>
+</div>
+
+{% if audio_file %}
+<div class="card shadow-sm">
+    <div class="card-header card-header-icon">
+        <i class="fas fa-file-audio fa-fw"></i>
+        <strong>Folder:</strong> {{ audio_file.source_folder }} | <strong>File:</strong> {{ audio_file.filename }}
+    </div>
+    <div class="card-body p-4">
+        <p class="text-muted">Listen to the audio, review the employee's work, make final edits, and then verify.</p>
+        
+        {% set path_to_audio = audio_file.filename|audio_path(audio_file.source_folder) %}
+        {% if path_to_audio %}
+            <audio controls class="w-100 mb-3" src="{{ url_for('serve_audio', filepath=path_to_audio) }}">Your browser does not support audio.</audio>
+            
+            <!-- --- THIS IS THE FIX --- -->
+            <!-- The form's action now correctly points to the 'admin_verify_transcription' endpoint -->
+            <form method="post" action="{{ url_for('admin_verify_transcription', file_id=audio_file.id) }}">
+                <div class="mb-3">
+                    <label for="transcription" class="form-label">Final Transcription</label>
+                    <textarea class="form-control" name="transcription" rows="8">{{ audio_file.corrected_transcription }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i>Verify and Export</button>
+            </form>
+        {% else %}
+            <div class="alert alert-danger">Audio file could not be located on the server.</div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">File not found or has already been processed.</div>
+{% endif %}
+{% endblock %}

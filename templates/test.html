@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+</div>
+
+<!-- Stats Cards -->
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="fas fa-calendar-check me-2"></i>Today's Progress</div>
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <h1 class="display-4 fw-bold" id="stats-today">...</h1>
+                <p class="text-muted mb-0">Files Verified Today</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="fas fa-users me-2"></i>Total Users</div>
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <h1 class="display-4 fw-bold" id="stats-users">...</h1>
+                <p class="text-muted mb-0">Registered Employees</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-md-12 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="fas fa-chart-pie me-2"></i>Overall Progress</div>
+            <div class="card-body d-flex flex-column justify-content-center">
+                <div class="progress" style="height: 25px;">
+                    <div id="progress-verified" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                    <div id="progress-completed" class="progress-bar bg-warning" role="progressbar" style="width: 0%;"></div>
+                </div>
+                <div class="mt-2 text-muted d-flex justify-content-between">
+                    <span id="stats-text">Loading stats...</span>
+                    <div><span class="badge bg-success">Verified</span><span class="badge bg-warning text-dark">Awaiting Review</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabbed Interface for Management -->
+<div class="card mt-4">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#transcription-reviews">Transcription Reviews <span class="badge bg-secondary">{{ files_for_review|length }}</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#contribution-reviews">Contribution Reviews <span class="badge bg-info">{{ contribution_reviews|length }}</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#user-management">User Management</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#locked-files">Assigned Work <span class="badge bg-warning text-dark">{{ locked_files|length }}</span></a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="tab-content">
+            <!-- Transcription Review Tab -->
+            <div class="tab-pane fade show active" id="transcription-reviews">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Files Awaiting Verification</h5>
+                    {% if files_for_review %}
+                    <form action="{{ url_for('admin_verify_all') }}" method="POST" onsubmit="return confirm('Are you sure?');">
+                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check-double me-1"></i>Verify All</button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead><tr><th>Source</th><th>Filename</th><th>Completed By</th><th>Completed At</th><th class="text-end">Action</th></tr></thead>
+                        <tbody>
+                            {% for file in files_for_review %}
+                            <tr>
+                                <td>{{ file.source_folder }}</td>
+                                <td>{{ file.filename }}</td>
+                                <td><span class="badge bg-secondary">{{ file.employee_name }}</span></td>
+                                <!-- --- THIS IS THE FIX --- -->
+                                <td>{{ file.verified_at[:16] if file.verified_at else '' }}</td>
+                                <td class="text-end"><a href="{{ url_for('admin_verify', file_id=file.id) }}" class="btn btn-primary btn-sm"><i class="fas fa-edit me-1"></i>Review</a></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center text-muted">No files are currently waiting for review.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Contribution Review Tab -->
+            <div class="tab-pane fade" id="contribution-reviews">
+                <h5 class="card-title">Contributions Awaiting Verification</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Image</th><th>Submitted Audio</th><th>Contributed By</th><th>At</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                            {% for item in contribution_reviews %}
+                            <tr>
+                                <td><a href="{{ url_for('serve_contribution_asset', folder='images', filename=item.image_filename) }}" target="_blank"><img src="{{ url_for('serve_contribution_asset', folder='images', filename=item.image_filename) }}" height="40px" class="rounded border"></a></td>
+                                <td><audio controls controlsList="nodownload" src="{{ url_for('serve_contribution_asset', folder='audio_submissions', filename=item.audio_filename) }}"></audio></td>
+                                <td><span class="badge bg-secondary">{{ item.contributor_name }}</span></td>
+                                <!-- --- THIS IS THE FIX --- -->
+                                <td>{{ item.contributed_at[:16] if item.contributed_at else '' }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i></button>
+                                    <button class="btn btn-danger btn-sm"><i class="fas fa-times me-1"></i></button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center text-muted">No contributions are waiting for review.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- User Management Tab -->
+            <div class="tab-pane fade" id="user-management">
+                <h5 class="card-title">Manage Employee Users</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead><tr><th>Full Name</th><th>Username</th><th class="text-end">Action</th></tr></thead>
+                        <tbody>
+                            {% for user in employee_users %}
+                            <tr><td>{{ user.full_name }}</td><td>{{ user.username }}</td><td class="text-end"><form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this user?');"><button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-1"></i>Delete</button></form></td></tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center text-muted">No employee users have registered yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Locked Files Tab -->
+            <div class="tab-pane fade" id="locked-files">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Files Currently Assigned</h5>
+                    {% if locked_files %}
+                    <form action="{{ url_for('admin_release_locks') }}" method="POST" onsubmit="return confirm('Are you sure you want to release ALL locked files?');"><button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-undo me-1"></i>Release All Locks</button></form>
+                    {% endif %}
+                </div>
+                {% if locked_files %}
+                <ul class="list-group list-group-flush">
+                    {% for file in locked_files %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">{{ file.filename }}<span class="badge bg-info">{{ file.employee_name }}</span></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-center text-muted">No files are currently assigned to users.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<!-- The live-update JavaScript remains the same -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // --- The main function to update all dashboard data ---
+    function updateDashboardData() {
+        const timestamp = new Date().getTime(); // Cache buster
+
+        // 1. Update the stats (progress bars, today's count, etc.)
+        fetch(`{{ url_for('api_stats') }}?t=${timestamp}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('stats-today').innerText = data.verified_today;
+                document.getElementById('stats-users').innerText = data.user_count;
+
+                if (data.total > 0) {
+                    let verified_p = (data.verified / data.total) * 100;
+                    let completed_p = (data.completed / data.total) * 100;
+                    document.getElementById('progress-verified').style.width = verified_p + '%';
+                    document.getElementById('progress-completed').style.width = completed_p + '%';
+                    document.getElementById('stats-text').innerText = `${data.verified} Verified | ${data.completed} Awaiting Review | ${data.pending} Pending | ${data.total} Total`;
+                } else {
+                    document.getElementById('stats-text').innerText = 'No files found in the system.';
+                }
+            });
+
+        // 2. Update the "Files Awaiting Verification" table
+        fetch(`{{ url_for('api_review_files') }}?t=${timestamp}`)
+            .then(response => response.json())
+            .then(files => {
+                const tableBody = document.getElementById('review-table-body');
+                const tableHeader = document.getElementById('review-table-header');
+                tableBody.innerHTML = ''; // Clear existing rows
+
+                let headerHTML = `<div><i class="fas fa-tasks fa-fw me-2"></i>Files Awaiting Verification</div>`;
+                if (files.length > 0) {
+                    headerHTML += `<form action="{{ url_for('admin_verify_all') }}" method="POST" onsubmit="return confirm('Are you sure?');"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check-double me-1"></i>Verify All (${files.length})</button></form>`;
+                }
+                tableHeader.innerHTML = headerHTML;
+
+                if (files.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No files are currently waiting for review.</td></tr>`;
+                } else {
+                    files.forEach(file => {
+                        const row = tableBody.insertRow();
+                        row.innerHTML = `<td>${file.source_folder}</td><td>${file.filename}</td><td><span class="badge bg-secondary">${file.employee_name}</span></td><td>${file.verified_at}</td><td class="text-end"><a href="/admin/verify/${file.id}" class="btn btn-primary btn-sm"><i class="fas fa-edit me-1"></i>Review</a></td>`;
+                    });
+                }
+            });
+            
+        // 3. Update the "Files Currently Assigned" card
+        fetch(`{{ url_for('api_locked_files') }}?t=${timestamp}`)
+            .then(response => response.json())
+            .then(files => {
+                const container = document.getElementById('locked-files-container');
+                if (files.length === 0) {
+                    container.innerHTML = ''; // Hide the card if no files are locked
+                } else {
+                    let listItems = files.map(file => `<li class="list-group-item d-flex justify-content-between align-items-center">${file.filename}<span class="badge bg-info">${file.employee_name}</span></li>`).join('');
+                    
+                    container.innerHTML = `
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-lock fa-fw me-2"></i>Files Currently Assigned (${files.length})</div>
+                            <form action="{{ url_for('admin_release_locks') }}" method="POST" onsubmit="return confirm('Are you sure you want to release ALL locked files?');">
+                                <button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-undo me-1"></i>Release All Locks</button>
+                            </form>
+                        </div>
+                        <div class="card-body p-0"><ul class="list-group list-group-flush">${listItems}</ul></div>
+                    </div>`;
+                }
+            });
+    }
+
+    updateDashboardData();
+    setInterval(updateDashboardData, 7000); // Poll every 7 seconds for a responsive feel
+
+});
+    // ... (Your existing JavaScript for polling /api/stats, /api/review_files, and /api/locked_files)
+    
+</script>
+{% endblock %}

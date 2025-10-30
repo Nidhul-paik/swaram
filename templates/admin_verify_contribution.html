@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Verify Contribution{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Review Contribution</h1>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</a>
+</div>
+
+{% if item %}
+<div class="card shadow-sm">
+    <div class="card-header">
+        <strong>Image:</strong> {{ item.image_filename }} | <strong>Contributor:</strong> {{ item.contributor_name }}
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 text-center">
+                <h5 class="mb-3">Original Image</h5>
+                <a href="{{ url_for('serve_contribution_asset', folder='images', filename=item.image_filename) }}" target="_blank">
+                    <img src="{{ url_for('serve_contribution_asset', folder='images', filename=item.image_filename) }}" alt="Contribution Image" class="img-fluid rounded border shadow-sm" style="max-height: 50vh;">
+                </a>
+            </div>
+            <div class="col-md-6">
+                <h5 class="mb-3">Submitted Audio</h5>
+                <audio controls controlsList="nodownload" class="w-100" src="{{ url_for('serve_contribution_asset', folder='audio_submissions', filename=item.audio_filename) }}"></audio>
+                <hr>
+                <p><strong>Actions:</strong></p>
+                <div class="d-flex gap-2 mt-3">
+                    <form action="{{ url_for('verify_contribution', item_id=item.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to VERIFY and accept this contribution?')">
+                        <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i>Verify and Accept</button>
+                    </form>
+                    <form action="{{ url_for('reject_contribution', item_id=item.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to REJECT this contribution and return it to the queue?')">
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-times-circle me-2"></i>Reject</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">This contribution could not be found or has already been processed.</div>
+{% endif %}
+{% endblock %}

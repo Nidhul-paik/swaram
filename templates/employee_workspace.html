@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Workspace{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Transcription Workspace</h1>
+</div>
+
+{% if audio_file %}
+<div class="card shadow-sm">
+    <div class="card-header card-header-icon">
+        <i class="fas fa-file-audio fa-fw me-2"></i>
+        <strong>File:</strong> {{ audio_file.filename }}
+    </div>
+
+    <div class="card-body p-4">
+        <p class="text-muted">Listen to the audio and correct the transcription below.</p>
+
+       {% load static %}
+       {% get_media_prefix as MEDIA_URL %}
+       {% if audio_file %}
+            <audio controls controlsList="nodownload" class="w-100 mb-3"
+                src="/media/raw_data/{{ audio_file.source_folder }}/05_final_chunks/{{ audio_file.filename }}">
+                Your browser does not support audio.
+            </audio>
+
+            <form method="post" action="{% url 'employee_workspace' %}" id="transcription-form">
+                {% csrf_token %}
+                <input type="hidden" name="file_id" value="{{ audio_file.id }}">
+
+                <div class="mb-3">
+                    <label for="transcription" class="form-label d-flex justify-content-between">
+                        <span>Transcription</span>
+                        <span id="mic-status" class="text-muted" style="display: none;"></span>
+                    </label>
+                    <textarea class="form-control" id="transcription-textarea" name="transcription" rows="8">{{ audio_file.original_transcription }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Submit for Review
+                        </button>
+                        <button type="button" id="clear-btn" class="btn btn-outline-danger">
+                            <i class="fas fa-times me-2"></i>Clear All
+                        </button>
+                    </div>
+                    <div>
+                        <button type="button" id="mic-btn" class="btn btn-info" title="Start Voice Input">
+                            <i id="mic-icon" class="fas fa-microphone"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-danger">Audio file could not be located. Please contact an admin.</div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="card shadow-sm text-center p-5">
+    <p class="text-muted">No audio file assigned to you yet.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const clearButton = document.getElementById('clear-btn');
+    const textArea = document.getElementById('transcription-textarea');
+    const micButton = document.getElementById('mic-btn');
+    const micIcon = document.getElementById('mic-icon');
+    const micStatus = document.getElementById('mic-status');
+
+    if (clearButton && textArea) {
+        clearButton.addEventListener('click', () => { textArea.value = ''; });
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (micButton && textArea && SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        let isListening = false;
+
+        recognition.lang = 'ml-IN'; // Malayalam (India)
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        micButton.addEventListener('click', () => {
+            if (isListening) recognition.stop();
+            else recognition.start();
+        });
+
+        recognition.onstart = () => {
+            isListening = true;
+            micStatus.textContent = "Listening...";
+            micStatus.style.display = 'inline';
+            micButton.classList.replace('btn-info', 'btn-danger');
+            micIcon.classList.add('fa-beat');
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micStatus.style.display = 'none';
+            micButton.classList.replace('btn-danger', 'btn-info');
+            micIcon.classList.remove('fa-beat');
+        };
+
+        recognition.onresult = (event) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) finalTranscript += transcript + ' ';
+            }
+            if (finalTranscript) textArea.value += finalTranscript;
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech Recognition Error:", event.error);
+            micStatus.textContent = `Error: ${event.error}`;
+            if (event.error === 'not-allowed') {
+                alert("Microphone permission denied. Enable it in browser settings.");
+            }
+        };
+    } else {
+        if (micButton) micButton.style.display = 'none';
+        if (micStatus) {
+            micStatus.textContent = "Voice input not supported on this browser.";
+            micStatus.style.display = 'inline';
+            micStatus.classList.add('text-danger');
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-trophy me-2"></i>Leaderboards</h1>
+</div>
+
+<div class="row">
+    <!-- Transcription Leaderboard -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">Top Transcribers (by Duration)</div>
+            <div class="card-body" id="transcription-leaderboard">
+                <div class="text-center text-muted p-5">Loading...</div>
+            </div>
+        </div>
+    </div>
+    <!-- Contribution Leaderboard -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">Top Contributors (by Count)</div>
+            <div class="card-body" id="contribution-leaderboard">
+                <div class="text-center text-muted p-5">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+   fetch("{% url 'api_leaderboard' %}?t=" + new Date().getTime())
+        .then(response => response.json())
+        .then(data => {
+            const transContainer = document.getElementById('transcription-leaderboard');
+            const contribContainer = document.getElementById('contribution-leaderboard');
+
+            // --- Render Transcription Leaderboard ---
+            if (!data.transcription_leaders || data.transcription_leaders.length === 0) {
+                transContainer.innerHTML = '<p class="text-center text-muted p-5">No transcription data yet.</p>';
+            } else {
+                const maxDuration = data.transcription_leaders[0].total_duration;
+                let transHTML = '<ul class="list-group list-group-flush">';
+                data.transcription_leaders.forEach((user, index) => {
+                    const durationInSeconds = (user.total_duration / 1000).toFixed(1);
+                    const barWidth = maxDuration > 0 ? (user.total_duration / maxDuration) * 100 : 0;
+                    let medal = '';
+                    if (index === 0) medal = '<i class="fas fa-medal" style="color: gold;"></i>';
+                    if (index === 1) medal = '<i class="fas fa-medal" style="color: silver;"></i>';
+                    if (index === 2) medal = '<i class="fas fa-medal" style="color: #cd7f32;"></i>';
+                    transHTML += `<li class="list-group-item"><div class="row align-items-center"><div class="col-1 text-center fs-5"><strong>#${index + 1}</strong> ${medal}</div><div class="col-3"><strong>${user.full_name}</strong></div><div class="col-6"><div class="progress" style="height: 20px;"><div class="progress-bar" role="progressbar" style="width: ${barWidth}%;"></div></div></div><div class="col-2 text-end"><strong>${durationInSeconds}s</strong></div></div></li>`;
+                });
+                transHTML += '</ul>';
+                transContainer.innerHTML = transHTML;
+            }
+
+            // --- Render Contribution Leaderboard ---
+            if (!data.contribution_leaders || data.contribution_leaders.length === 0) {
+                contribContainer.innerHTML = '<p class="text-center text-muted p-5">No contribution data yet.</p>';
+            } else {
+                const maxContributions = data.contribution_leaders[0].total_contributions;
+                let contribHTML = '<ul class="list-group list-group-flush">';
+                data.contribution_leaders.forEach((user, index) => {
+                    const barWidth = maxContributions > 0 ? (user.total_contributions / maxContributions) * 100 : 0;
+                    let medal = '';
+                    if (index === 0) medal = '<i class="fas fa-medal" style="color: gold;"></i>';
+                    if (index === 1) medal = '<i class="fas fa-medal" style="color: silver;"></i>';
+                    if (index === 2) medal = '<i class="fas fa-medal" style="color: #cd7f32;"></i>';
+                    contribHTML += `<li class="list-group-item"><div class="row align-items-center"><div class="col-1 text-center fs-5"><strong>#${index + 1}</strong> ${medal}</div><div class="col-3"><strong>${user.full_name}</strong></div><div class="col-6"><div class="progress" style="height: 20px;"><div class="progress-bar bg-success" role="progressbar" style="width: ${barWidth}%;"></div></div></div><div class="col-2 text-end"><strong>${user.total_contributions}</strong></div></div></li>`;
+                });
+                contribHTML += '</ul>';
+                contribContainer.innerHTML = contribHTML;
+            }
+        });
+});
+</script>
+{% endblock %}
