@@ -17,24 +17,79 @@
                     {% endfor %}
                 {% endif %}
 
-                <form method="post" action="{% url 'register' %}">
+               <form method="post" action="{% url 'register' %}">
                     {% csrf_token %}
+
                     <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" name="full_name" required>
+                        
+                        <input type="text" class="form-control" placeholder="Name" name="full_name" required>
                     </div>
+
                     <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" required>
+                       
+                        <input type="text" class="form-control" placeholder="User Name" name="username" required>
                     </div>
+
                     <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" required>
+                       
+                        <input type="email" class="form-control" placeholder="Email" name="email" required>
                     </div>
+
+                   <div class="mb-3">
+                        
+                        <select class="form-select" name="district"  placeholder="select District" id="district" required>
+                            <option value="">Select District</option>
+                            <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+                            <option value="Kollam">Kollam</option>
+                            <option value="Pathanamthitta">Pathanamthitta</option>
+                            <option value="Alappuzha">Alappuzha</option>
+                            <option value="Kottayam">Kottayam</option>
+                            <option value="Idukki">Idukki</option>
+                            <option value="Ernakulam">Ernakulam</option>
+                            <option value="Thrissur">Thrissur</option>
+                            <option value="Palakkad">Palakkad</option>
+                            <option value="Malappuram">Malappuram</option>
+                            <option value="Kozhikode">Kozhikode</option>
+                            <option value="Wayanad">Wayanad</option>
+                            <option value="Kannur">Kannur</option>
+                            <option value="Kasaragod">Kasaragod</option>
+                        </select>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <input type="tel" class="form-control" name="phone" placeholder="Mob NO" pattern="[0-9]{10}" maxlength="10" required>
+                    </div>
+
+                    <div class="mb-3 position-relative">
+                     
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" placeholder="Password" name="password" required>
+                            <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100 mt-3">
                         <i class="fas fa-check-circle me-2"></i>Register
                     </button>
                 </form>
+
+                <script>
+                    // Toggle password visibility
+                    const togglePassword = document.querySelector("#togglePassword");
+                    const password = document.querySelector("#password");
+                    const eyeIcon = document.querySelector("#eyeIcon");
+
+                    togglePassword.addEventListener("click", function () {
+                        const type = password.getAttribute("type") === "password" ? "text" : "password";
+                        password.setAttribute("type", type);
+                        eyeIcon.classList.toggle("fa-eye");
+                        eyeIcon.classList.toggle("fa-eye-slash");
+                    });
+                </script>
+
 
                 <div class="text-center mt-3">
                     <small class="text-muted">

@@ -32,7 +32,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=150, unique=True)
     full_name = models.CharField(max_length=150)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
-    
+    email = models.EmailField(unique=True, null=True, blank=True)
+    district = models.CharField(max_length=100, null=True, blank=True)
+    phone = models.CharField(max_length=15, null=True, blank=True)
     api_token = models.CharField(max_length=64, unique=True, blank=True, null=True)
 
     password = models.CharField(max_length=256) 

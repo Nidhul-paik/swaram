@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Admin Dashboard{% endblock %}
-
+{% load static %}
+{% get_media_prefix as MEDIA_URL %}
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
     <h1 class="h2">Dashboard</h1>
@@ -218,10 +219,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     const row = tableBody.insertRow();
                     const contributedAt = item.contributed_at ? item.contributed_at.substring(0, 16) : '';
                     row.innerHTML = `
-                        <td><a href="/contribution_assets/images/${item.image_filename}" target="_blank"><img src="/contribution_assets/images/${item.image_filename}" height="40px" class="rounded border"></a></td>
+                        <td><a href="contribution_assets/images/${item.image_filename}" target="_blank"><img src="/media/contribution_assets/images/${item.image_filename}" height="40px" class="rounded border"></a></td>
                         <td><span class="badge bg-secondary">${item.contributor_name}</span></td>
                         <td>${contributedAt}</td>
-                        <td class="text-end"><a href="/admin/review_contribution/${item.id}" class="btn btn-primary btn-sm"><i class="fas fa-search-plus me-1"></i>Review</a></td>
+                        <td class="text-end"><a href="/dashboard/review_contribution/${item.id}" class="btn btn-primary btn-sm"><i class="fas fa-search-plus me-1"></i>Review</a></td>
                     `;
                 });
             }

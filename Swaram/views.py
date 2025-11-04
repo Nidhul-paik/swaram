@@ -67,7 +67,7 @@ def logout_view(request):
 def landing_page(request):
     if request.user.role == 'admin':
         return redirect('admin_dashboard')
-    return render(request, 'landing_page.html')
+    return render(request, 'login.html')
 
 
 # --- Employee Workspace ---
@@ -295,34 +295,99 @@ from django.db.models import Sum, Count
 from .models import AudioFile, ImageContribution, User  # assuming these exist
 
 @login_required
+# def api_leaderboard(request):
+#     user = request.user
+#     if not user.is_authenticated:
+#         return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+#     # --- Transcription Leaderboard ---
+#     transcription_leaders = (
+#         AudioFile.objects.filter(status='verified', verified_by__role='employee')
+#         .values('verified_by__full_name')
+#         .annotate(total_duration=Sum('duration_ms'))
+#         .order_by('-total_duration')[:10]
+#     )
+
+#     # --- Image Contribution Leaderboard ---
+#     contribution_leaders = (
+#         ImageContribution.objects.filter(status='verified', contributed_by__role='employee')
+#         .values('contributed_by__full_name')
+#         .annotate(total_contributions=Count('id'))
+#         .order_by('-total_contributions')[:10]
+#     )
+
+#     # Format response
+#     response_data = {
+#         'transcription_leaders': list(transcription_leaders),
+#         'contribution_leaders': list(contribution_leaders),
+#     }
+
+#     return JsonResponse(response_data)
+
+
+
 def api_leaderboard(request):
     user = request.user
     if not user.is_authenticated:
         return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     # --- Transcription Leaderboard ---
-    transcription_leaders = (
-        AudioFile.objects.filter(status='verified', verified_by__role='employee')
-        .values('verified_by__full_name')
-        .annotate(total_duration=Sum('duration_ms'))
-        .order_by('-total_duration')[:10]
-    )
+    try:
+        # Case 1: verified_by is a ForeignKey
+        AudioFile._meta.get_field('verified_by')
+        transcription_leaders = (
+            AudioFile.objects.filter(status='verified', verified_by__role='employee')
+            .values(full_name=F('verified_by__full_name'))
+            .annotate(total_duration=Sum('duration_ms'))
+            .order_by('-total_duration')[:10]
+        )
+    except:
+        # Case 2: verified_by_id is integer field
+        transcription_leaders = (
+            AudioFile.objects.filter(status='verified', verified_by_id__isnull=False)
+            .values('verified_by_id')
+            .annotate(total_duration=Sum('duration_ms'))
+            .order_by('-total_duration')[:10]
+        )
+        # manually attach name from User table
+        user_map = {u.id: u.full_name for u in User.objects.all()}
+        transcription_leaders = [
+            {"full_name": user_map.get(item["verified_by_id"], "Unknown"),
+             "total_duration": item["total_duration"]}
+            for item in transcription_leaders
+        ]
 
     # --- Image Contribution Leaderboard ---
-    contribution_leaders = (
-        ImageContribution.objects.filter(status='verified', contributed_by__role='employee')
-        .values('contributed_by__full_name')
-        .annotate(total_contributions=Count('id'))
-        .order_by('-total_contributions')[:10]
-    )
+    try:
+        ImageContribution._meta.get_field('contributed_by')
+        contribution_leaders = (
+            ImageContribution.objects.filter(status='verified', contributed_by__role='employee')
+            .values(full_name=F('contributed_by__full_name'))
+            .annotate(total_contributions=Count('id'))
+            .order_by('-total_contributions')[:10]
+        )
+    except:
+        contribution_leaders = (
+            ImageContribution.objects.filter(status='verified', contributed_by_id__isnull=False)
+            .values('contributed_by_id')
+            .annotate(total_contributions=Count('id'))
+            .order_by('-total_contributions')[:10]
+        )
+        user_map = {u.id: u.full_name for u in User.objects.all()}
+        contribution_leaders = [
+            {"full_name": user_map.get(item["contributed_by_id"], "Unknown"),
+             "total_contributions": item["total_contributions"]}
+            for item in contribution_leaders
+        ]
 
-    # Format response
     response_data = {
         'transcription_leaders': list(transcription_leaders),
         'contribution_leaders': list(contribution_leaders),
     }
 
     return JsonResponse(response_data)
+
+
 
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -406,7 +471,7 @@ def admin_delete_user(request, user_id):
         ImageContribution.objects.filter(assigned_to=user_to_delete).update(
             status='pending', assigned_to=None
         )
-        ImageContribution.objects.filter(status='completed', contributor=user_to_delete).update(
+        ImageContribution.objects.filter(status='completed', contributed_by=user_to_delete).update(
             status='pending',
             contributed_by=None,
             contributed_at=None,
@@ -419,14 +484,159 @@ def admin_delete_user(request, user_id):
     messages.success(request, "User deleted successfully. Their work was returned to the queue.")
     return redirect('admin_dashboard')
 
-
-import os
-import csv
-from datetime import datetime
-from django.conf import settings
-from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from Swaram.models import AudioFile, User
+from Swaram.models import ImageContribution
+
+@login_required
+def admin_review_contribution(request, item_id):
+    # Only allow admin users
+    if request.user.role != 'admin':
+        return redirect('login')
+
+    # Get the contribution item
+    item = (
+        ImageContribution.objects
+        .select_related('contributed_by')
+        .filter(id=item_id, status='completed')
+        .first()
+    )
+
+    if not item:
+        messages.warning(request, "This contribution is no longer available for review.")
+        return redirect('admin_dashboard')
+
+    return render(request, 'admin_verify_contribution.html', {'item': item})
+
+def serve_contribution_asset(request, folder, filename):
+    """
+    Serves image/audio contribution assets (only for logged-in users).
+    """
+
+    # Define allowed folders
+    allowed_folders = ['images', 'audio_submissions']
+    if folder not in allowed_folders:
+        raise Http404("Invalid folder")
+
+    # Construct path inside media/contribution_assets/<folder>/
+    directory = os.path.join(settings.MEDIA_ROOT, 'contribution_assets', folder)
+    file_path = os.path.join(directory, filename)
+
+    # Check if file exists
+    if not os.path.exists(file_path):
+        raise Http404(f"File not found: {file_path}")
+
+    # Return file (image/audio)
+    try:
+        return FileResponse(open(file_path, 'rb'))
+    except Exception as e:
+        return HttpResponse(f"Error serving file: {e}", status=500)
+
+
+
+# Check if the logged-in user is an admin
+def is_admin(user):
+    return user.is_authenticated and user.role == 'admin'
+
+
+
+@login_required
+@user_passes_test(is_admin)
+@login_required
+@user_passes_test(is_admin)
+def verify_contribution(request, item_id):
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("admin_dashboard")
+
+    item = get_object_or_404(ImageContribution, id=item_id)
+
+    if not item.audio_filename or not item.image_filename:
+        messages.error(request, "Contribution not found or missing image/audio.")
+        return redirect("admin_dashboard")
+
+    # ✅ Predefine these to avoid 'referenced before assignment'
+    final_image_filename = None
+    final_audio_filename = None
+
+    try:
+        # Paths
+        FINAL_CONTRIBUTION_DIR = os.path.join(settings.BASE_DIR, "final_contributions")
+        CONTRIBUTION_IMAGE_DIR = os.path.join(settings.BASE_DIR, "media", "contribution_assets", "images")
+        CONTRIBUTION_AUDIO_DIR = os.path.join(settings.BASE_DIR, "media", "contribution_assets", "audio_submissions")
+
+        os.makedirs(os.path.join(FINAL_CONTRIBUTION_DIR, "images"), exist_ok=True)
+        os.makedirs(os.path.join(FINAL_CONTRIBUTION_DIR, "audio"), exist_ok=True)
+
+        # Filenames
+        base_filename, image_ext = os.path.splitext(item.image_filename)
+        final_image_filename = f"{base_filename}{image_ext}"
+        final_audio_filename = f"{base_filename}.wav"
+
+        # Paths for debugging
+        src_image = os.path.join(CONTRIBUTION_IMAGE_DIR, item.image_filename)
+        src_audio = os.path.join(CONTRIBUTION_AUDIO_DIR, item.audio_filename)
+
+        print("DEBUG: Image exists?", os.path.exists(src_image), src_image)
+        print("DEBUG: Audio exists?", os.path.exists(src_audio), src_audio)
+
+        # Move files only if they exist
+        if os.path.exists(src_image):
+            shutil.move(src_image, os.path.join(FINAL_CONTRIBUTION_DIR, "images", final_image_filename))
+        else:
+            raise FileNotFoundError(f"Image not found: {src_image}")
+
+        if os.path.exists(src_audio):
+            shutil.move(src_audio, os.path.join(FINAL_CONTRIBUTION_DIR, "audio", final_audio_filename))
+        else:
+            raise FileNotFoundError(f"Audio not found: {src_audio}")
+
+        # Update DB
+        item.status = "verified"
+        item.save()
+
+        messages.success(request, f"✅ Contribution '{item.image_filename}' verified successfully.")
+    except Exception as e:
+        print(f"❌ Error verifying contribution {item_id}: {e}")
+        messages.error(request, f"Error verifying contribution: {e}")
+
+    return redirect("admin_dashboard")
+
+
+
+
+# Helper decorator: ensure admin access
+def admin_required(view_func):
+    return user_passes_test(lambda u: u.is_authenticated and u.is_staff)(view_func)
+
+@login_required
+@admin_required
+def reject_contribution(request, item_id):
+    if request.method != "POST":
+        return redirect('admin_dashboard')
+
+    contribution = get_object_or_404(ImageContribution, id=item_id)
+
+    # Try removing the audio file
+    if contribution.audio_filename:
+        audio_path = os.path.join(settings.CONTRIBUTION_AUDIO_DIR, contribution.audio_filename)
+        try:
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+        except OSError as e:
+            print(f"Error deleting rejected audio file: {e}")
+
+    # Reset contribution fields
+    contribution.status = 'pending'
+    contribution.audio_filename = None
+    contribution.contributed_by = None
+    contribution.contributed_at = None
+    contribution.assigned_to = None
+    contribution.save()
+
+    messages.info(request, 'Contribution rejected and returned to the queue.')
+    return redirect('admin_dashboard')
 
 @login_required
 def api_stats(request):

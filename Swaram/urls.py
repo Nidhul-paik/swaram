@@ -15,7 +15,7 @@ urlpatterns = [
     path('api/leaderboard/', views.api_leaderboard, name='api_leaderboard'),
     path('login/', views.login_view, name='login'),
     path('contribute/submit/', views.contribute_submit, name='contribute_submit'),
-    path('admin/delete_user/<int:user_id>/', views.admin_delete_user, name='admin_delete_user'),
+    path('dashboard/delete_user/<int:user_id>/', views.admin_delete_user, name='admin_delete_user'),
     path('api/stats/', views.api_stats, name='api_stats'),
     path('api/stats/contribution/', views.api_stats_contribution, name='api_stats_contribution'),
     path('api/review_files/', views.api_review_files, name='api_review_files'),
@@ -23,7 +23,8 @@ urlpatterns = [
     path('api/contribution_reviews/', views.api_contribution_reviews, name='api_contribution_reviews'),
     path('admin/verify_all_transcription/', views.admin_verify_all_transcription, name='admin_verify_all_transcription'),
     path('admin/release_locks/', views.admin_release_locks, name='admin_release_locks'),
-
-
-
+    path('dashboard/review_contribution/<int:item_id>/', views.admin_review_contribution, name='admin_review_contribution'),
+    path('contribution_assets/<str:folder>/<str:filename>/', views.serve_contribution_asset, name='serve_contribution_asset'),
+    path('dashboard/verify_contribution/<int:item_id>/', views.verify_contribution, name='verify_contribution'),
+    path('dashboard/reject_contribution/<int:item_id>/', views.reject_contribution, name='reject_contribution'),
 ]

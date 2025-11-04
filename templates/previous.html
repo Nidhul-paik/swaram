@@ -1,0 +1,19 @@
+<nav class="navbar navbar-light bg-light fixed-top p-0">
+        <div class="d-flex align-items-center">
+            <button class="navbar-toggler p-2 ms-2" type="button" id="sidebar-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            {% if user.is_staff %}
+            <div class="ms-2">
+                <button id="history-back-btn" class="btn btn-light btn-sm" title="Go Back"><i class="fas fa-arrow-left"></i></button>
+                <button id="history-forward-btn" class="btn btn-light btn-sm" title="Go Forward"><i class="fas fa-arrow-right"></i></button>
+            </div>
+            {% endif %}
+            
+            <a class="navbar-brand ms-3" href="#">
+                <img src="{% static 'images/logo.png' %}" alt="Logo" class="navbar-brand-logo">
+                Audio Verifier
+            </a>
+        </div>
+    </nav>
