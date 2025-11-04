@@ -1,0 +1,15 @@
+<h4>Verify OTP</h4>
+<p>OTP sent to {{ email }} (valid for 5 minutes)</p>
+
+<form method="POST" action="{% url 'verify_reset_otp' %}">
+  {% csrf_token %}
+  <input type="hidden" name="email" value="{{ email }}">
+  <label>Enter OTP:</label>
+  <input type="text" name="otp" required maxlength="6">
+  <button type="submit">Verify OTP</button>
+</form>
+
+<form method="GET" action="{% url 'resend_reset_otp' %}">
+  <input type="hidden" name="email" value="{{ email }}">
+  <button type="submit">Resend OTP</button>
+</form>

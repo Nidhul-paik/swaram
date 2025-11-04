@@ -1,0 +1,9 @@
+<h4>Verify your OTP sent to {{ email }}</h4>
+<form method="POST">
+  {% csrf_token %}
+  <input type="text" name="otp" placeholder="Enter OTP" required>
+  <button type="submit">Verify</button>
+</form>
+<form method="GET" action="{% url 'resend_otp' %}">
+  <button type="submit">Resend OTP</button>
+</form>

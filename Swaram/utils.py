@@ -59,3 +59,24 @@ def verify_and_export_file(audio_obj, final_transcription):
     except Exception as e:
         print(f"verify_and_export_file error: {e}")
         return False
+
+
+import random
+from django.core.mail import send_mail
+from .models import EmailOTP
+
+from django.conf import settings
+
+def send_otp_to_email(email):
+    otp = str(random.randint(100000, 999999))
+    EmailOTP.objects.filter(email=email).delete()
+    EmailOTP.objects.create(email=email, otp=otp)
+
+    send_mail(
+        subject="Your OTP for Registration",
+        message=f"Your OTP is {otp}. It is valid for 5 minutes.",
+        from_email=settings.EMAIL_HOST_USER,   # ✅ use your configured Gmail
+        recipient_list=[email],
+        fail_silently=False,
+    )
+    return otp

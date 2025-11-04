@@ -67,7 +67,7 @@ def logout_view(request):
 def landing_page(request):
     if request.user.role == 'admin':
         return redirect('admin_dashboard')
-    return render(request, 'login.html')
+    return render(request, 'landing_page.html')
 
 
 # --- Employee Workspace ---
@@ -216,16 +216,51 @@ def login_view(request):
 
 User = get_user_model()
 
-def register_view(request):
-    if request.user.is_authenticated:
-        return redirect('landing_page')
+# def register_view(request):
+#     if request.user.is_authenticated:
+#         return redirect('landing_page')
 
+#     if request.method == 'POST':
+#         username = request.POST.get('username')
+#         full_name = request.POST.get('full_name')
+#         password = request.POST.get('password')
+
+#         if not username or not full_name or not password:
+#             messages.error(request, "All fields are required.")
+#             return redirect('register')
+
+#         if User.objects.filter(username=username).exists():
+#             messages.warning(request, "Username already exists.")
+#             return redirect('register')
+
+#         # ✅ Use custom manager method
+#         user = User.objects.create_user(
+#             username=username,
+#             full_name=full_name,
+#             role='employee',
+#             password=password
+#         )
+
+#         messages.success(request, "Account created successfully! Please log in.")
+#         return redirect('login')
+
+#     return render(request, 'register.html')
+
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import User
+from .utils import send_otp_to_email
+from .models import EmailOTP
+
+def register_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         full_name = request.POST.get('full_name')
+        email = request.POST.get('email')
         password = request.POST.get('password')
 
-        if not username or not full_name or not password:
+        if not all([username, full_name, email, password]):
             messages.error(request, "All fields are required.")
             return redirect('register')
 
@@ -233,18 +268,84 @@ def register_view(request):
             messages.warning(request, "Username already exists.")
             return redirect('register')
 
-        # ✅ Use custom manager method
-        user = User.objects.create_user(
-            username=username,
-            full_name=full_name,
-            role='employee',
-            password=password
-        )
+        if User.objects.filter(email=email).exists():
+            messages.warning(request, "Email already exists.")
+            return redirect('register')
 
-        messages.success(request, "Account created successfully! Please log in.")
-        return redirect('login')
+        # ✅ Send OTP
+        send_otp_to_email(email)
+        request.session['pending_user'] = {
+            'username': username,
+            'full_name': full_name,
+            'email': email,
+            'password': password
+        }
+        messages.info(request, f"OTP sent to {email}. Please verify.")
+        return redirect('verify_otp')
 
     return render(request, 'register.html')
+
+
+from django.utils import timezone
+from datetime import timedelta
+from .models import EmailOTP, User
+from django.contrib import messages
+
+def verify_otp_view(request):
+    pending_user = request.session.get('pending_user')
+    if not pending_user:
+        return redirect('register')
+
+    email = pending_user['email']
+
+    if request.method == 'POST':
+        otp_entered = request.POST.get('otp')
+        try:
+            otp_obj = EmailOTP.objects.get(email=email, otp=otp_entered)
+        except EmailOTP.DoesNotExist:
+            messages.error(request, "Invalid OTP.")
+            return redirect('verify_otp')
+
+        if otp_obj.is_expired():
+            messages.error(request, "OTP expired. Please resend.")
+            return redirect('verify_otp')
+
+        otp_obj.is_verified = True
+        otp_obj.save()
+
+        # ✅ Create user after verification
+        user = User.objects.create_user(
+            username=pending_user['username'],
+            full_name=pending_user['full_name'],
+            role='employee',
+            password=pending_user['password']
+        )
+        user.email = email
+        user.save()
+
+        del request.session['pending_user']
+        messages.success(request, "Registration successful! Please log in.")
+        return redirect('login')
+
+    return render(request, 'verify_otp.html', {'email': email})
+
+
+def resend_otp_view(request):
+    pending_user = request.session.get('pending_user')
+    if not pending_user:
+        return redirect('register')
+
+    email = pending_user['email']
+
+    # Check last OTP time
+    last_otp = EmailOTP.objects.filter(email=email).order_by('-created_at').first()
+    if last_otp and timezone.now() - last_otp.created_at < timedelta(minutes=1):
+        messages.warning(request, "Please wait a minute before resending OTP.")
+        return redirect('verify_otp')
+
+    send_otp_to_email(email)
+    messages.success(request, "OTP resent successfully.")
+    return redirect('verify_otp')
 
 
 @login_required
@@ -868,3 +969,84 @@ def admin_release_locks(request):
 
     # If accessed via GET — just redirect safely
     return redirect('admin_dashboard')
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.hashers import make_password
+from django.utils import timezone
+from .models import User, EmailOTP
+from .utils import send_otp_to_email
+
+# STEP 1: Request OTP (enter email)
+def password_reset(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+
+        # Step 1: Send OTP
+        if 'send_otp' in request.POST:
+            if not User.objects.filter(email=email).exists():
+                messages.error(request, "No user found with this email.")
+                return redirect('password_reset')
+
+            send_otp_to_email(email)
+            messages.success(request, f"OTP sent to {email}. Please verify.")
+            return render(request, 'verify_reset_otp.html', {'email': email})
+
+        # Step 2: Verify OTP and reset password
+        elif 'reset_password' in request.POST:
+            otp = request.POST.get('otp')
+            password = request.POST.get('password')
+            confirm_password = request.POST.get('confirm_password')
+
+            try:
+                otp_record = EmailOTP.objects.get(email=email, otp=otp)
+                if otp_record.is_expired():
+                    messages.error(request, "OTP expired! Please resend OTP.")
+                    return redirect('password_reset')
+
+                if password != confirm_password:
+                    messages.error(request, "Passwords do not match.")
+                    return render(request, 'set_new_password.html', {'email': email})
+
+                user = User.objects.get(email=email)
+                user.set_password(password)
+                user.save()
+                otp_record.delete()
+                messages.success(request, "Password reset successful! Please log in.")
+                return redirect('login')
+
+            except EmailOTP.DoesNotExist:
+                messages.error(request, "Invalid OTP.")
+                return render(request, 'set_new_password.html', {'email': email})
+
+    return render(request, 'password_reset.html')
+
+
+# STEP 2: OTP verification page
+def verify_reset_otp(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        otp = request.POST.get('otp')
+
+        try:
+            record = EmailOTP.objects.get(email=email, otp=otp)
+            if record.is_expired():
+                messages.error(request, "OTP expired. Please resend OTP.")
+                return redirect('password_reset')
+            return render(request, 'set_new_password.html', {'email': email})
+        except EmailOTP.DoesNotExist:
+            messages.error(request, "Invalid OTP.")
+            return render(request, 'verify_otp.html', {'email': email})
+
+    return redirect('password_reset')
+
+
+# STEP 3: Resend OTP
+def resend_reset_otp(request):
+    email = request.GET.get('email')
+    if email:
+        send_otp_to_email(email)
+        messages.success(request, f"New OTP sent to {email}.")
+        return render(request, 'verify_otp.html', {'email': email})
+    messages.error(request, "Invalid email.")
+    return redirect('password_reset')

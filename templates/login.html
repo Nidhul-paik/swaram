@@ -24,14 +24,39 @@
                         <label for="username" class="form-label">Username</label>
                         <input type="text" class="form-control" name="username" required>
                     </div>
-                    <div class="mb-3">
+
+                    <div class="mb-3 position-relative">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" required>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                        <div class="text-end mt-1">
+                            <a href="{% url 'password_reset' %}" class="text-decoration-none">Forgot Password?</a>
+                        </div>
                     </div>
+
                     <button type="submit" class="btn btn-primary w-100 mt-3">
                         <i class="fas fa-sign-in-alt me-2"></i>Login
                     </button>
                 </form>
+
+                <script>
+                    // Toggle password visibility
+                    const togglePassword = document.getElementById("togglePassword");
+                    const passwordField = document.getElementById("password");
+                    const toggleIcon = document.getElementById("toggleIcon");
+
+                    togglePassword.addEventListener("click", function() {
+                        const type = passwordField.getAttribute("type") === "password" ? "text" : "password";
+                        passwordField.setAttribute("type", type);
+                        toggleIcon.classList.toggle("fa-eye");
+                        toggleIcon.classList.toggle("fa-eye-slash");
+                    });
+                </script>
+
                 <div class="text-center mt-3">
                     <small class="text-muted">
                         New user? <a href="{% url 'register' %}">Register here</a>
