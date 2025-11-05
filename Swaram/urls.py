@@ -29,7 +29,7 @@ urlpatterns = [
     path('dashboard/reject_contribution/<int:item_id>/', views.reject_contribution, name='reject_contribution'),
     path('verify-otp/', views.verify_otp_view, name='verify_otp'),
     path('resend-otp/', views.resend_otp_view, name='resend_otp'),
-    path('password-reset/', views.password_reset, name='password_reset'),
     path('verify-reset-otp/', views.verify_reset_otp, name='verify_reset_otp'),
     path('resend-reset-otp/', views.resend_reset_otp, name='resend_reset_otp'),
+    path('set_new_password/', views.set_new_password, name='set_new_password'),
 ]

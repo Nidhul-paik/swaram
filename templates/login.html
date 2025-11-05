@@ -4,72 +4,206 @@
 
 {% block auth_content %}
 <div class="login-container">
-    <div class="col-md-4 mx-auto">
-        <div class="card shadow-lg">
-            <div class="card-body p-5">
-                <h3 class="card-title text-center mb-4">
-                    <img src="{% static 'images/logo.png' %}" alt="Logo" class="navbar-brand-logo">
-                    Audio Verifier
-                </h3>
-                
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
+<div class="col-md-4 mx-auto">
+<div class="card shadow-lg">
+<div class="card-body p-5">
+<h3 class="card-title text-center mb-4">
+    <img src="{% static 'images/logo.png' %}" alt="Logo" class="navbar-brand-logo">
+    Audio Verifier
+</h3>
 
-                <form method="post" action="{% url 'login' %}">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" required>
-                    </div>
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
 
-                    <div class="mb-3 position-relative">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="password" name="password" required>
-                            <button type="button" class="btn btn-outline-secondary" id="togglePassword">
-                                <i class="fas fa-eye" id="toggleIcon"></i>
-                            </button>
-                        </div>
-                        <div class="text-end mt-1">
-                            <a href="{% url 'password_reset' %}" class="text-decoration-none">Forgot Password?</a>
-                        </div>
-                    </div>
+<form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" class="form-control" name="username" required>
+    </div>
+    <div class="mb-3 position-relative">
+        <label for="password" class="form-label">Password</label>
+        <div class="input-group">
+            <input type="password" class="form-control" id="password" name="password" required>
+            <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                <i class="fas fa-eye" id="toggleIcon"></i>
+            </button>
+        </div>
+        <div class="text-end mt-1">
+            <a href="#" id="Forgot-pass" class="text-decoration-none">Forgot Password?</a>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 mt-3">
+        <i class="fas fa-sign-in-alt me-2"></i>Login
+    </button>
+</form>
 
-                    <button type="submit" class="btn btn-primary w-100 mt-3">
-                        <i class="fas fa-sign-in-alt me-2"></i>Login
-                    </button>
-                </form>
-
-                <script>
-                    // Toggle password visibility
-                    const togglePassword = document.getElementById("togglePassword");
-                    const passwordField = document.getElementById("password");
-                    const toggleIcon = document.getElementById("toggleIcon");
-
-                    togglePassword.addEventListener("click", function() {
-                        const type = passwordField.getAttribute("type") === "password" ? "text" : "password";
-                        passwordField.setAttribute("type", type);
-                        toggleIcon.classList.toggle("fa-eye");
-                        toggleIcon.classList.toggle("fa-eye-slash");
-                    });
-                </script>
-
-                <div class="text-center mt-3">
-                    <small class="text-muted">
-                        New user? <a href="{% url 'register' %}">Register here</a>
-                    </small>
-                </div>
-            </div>
+<!-- ====================== FORGOT PASSWORD POPUP ====================== -->
+<div id="email_pass" style="
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+    z-index: 9999; justify-content: center; align-items: center;
+">
+    <div id="popup-content" class="card shadow-lg p-4" style="width: 350px; border-radius: 15px; background: white;">
+        <div id="popup-body">
+            <!-- Content loaded dynamically -->
         </div>
     </div>
 </div>
 
+<div class="text-center mt-3">
+    <small class="text-muted">
+        New user? <a href="{% url 'register' %}">Register here</a>
+    </small>
+</div>
+</div>
+</div>
+</div>
+</div>
+
 <footer class="footer mt-5 text-center">
-    <div class="container">
-        <span>&copy; {{ year }} Powered by ICFOSS</span>
-    </div>
+<div class="container">
+    <span>&copy; {{ year }} Powered by ICFOSS</span>
+</div>
 </footer>
+
+<!-- ====================== SCRIPTS ====================== -->
+<script>
+// Toggle password visibility
+document.getElementById("togglePassword").addEventListener("click", function() {
+    const field = document.getElementById("password");
+    const icon = document.getElementById("toggleIcon");
+    if (field.type === "password") {
+        field.type = "text";
+        icon.classList.replace("fa-eye", "fa-eye-slash");
+    } else {
+        field.type = "password";
+        icon.classList.replace("fa-eye-slash", "fa-eye");
+    }
+});
+
+// ====================== POPUP LOGIC ======================
+const popup = document.getElementById("email_pass");
+const popupBody = document.getElementById("popup-body");
+
+// Open popup on "Forgot Password?"
+document.getElementById("Forgot-pass").addEventListener("click", e => {
+    e.preventDefault();
+    showStep('email');
+    popup.style.display = "flex";
+});
+
+// Close when clicking backdrop or close button
+popup.addEventListener("click", e => {
+    if (e.target === popup) popup.style.display = "none";
+});
+document.addEventListener("click", e => {
+    if (e.target.id === "close-email") popup.style.display = "none";
+});
+
+// ====================== STEP RENDERERS ======================
+// ====================== STEP RENDERERS ======================
+function showStep(step, data = {}) {
+    if (step === 'email') {
+        popupBody.innerHTML = `
+            <h4 class="text-center mb-3">Reset Password</h4>
+            <form method="post" action="{% url 'login' %}" id="email-form">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+                <button type="submit" name="send_otp" class="btn btn-primary w-100">Send OTP</button>
+            </form>
+            <button type="button" id="close-email" class="btn btn-outline-danger mt-3 w-100">Close</button>
+        `;
+    }
+    else if (step === 'otp') {
+        popupBody.innerHTML = `
+            <h4 class="text-center mb-3">Enter OTP</h4>
+            <p class="text-center text-muted mb-3">Sent to <strong>${data.email}</strong></p>
+            <form method="post" action="{% url 'login' %}" id="otp-form">
+                {% csrf_token %}
+                <input type="hidden" name="email" value="${data.email}">
+                <div class="d-flex justify-content-between mb-3">
+                    ${Array(6).fill().map((_, i) => `
+                        <input type="text" class="form-control text-center otp-input" maxlength="1"
+                               name="otp_digit_${i+1}" required style="width:45px; font-size:1.5rem;">
+                    `).join('')}
+                </div>
+                <button type="submit" name="verify_otp" class="btn btn-success w-100">Verify OTP</button>
+            </form>
+            <button type="button" id="close-email" class="btn btn-outline-danger mt-3 w-100">Close</button>
+        `;
+
+        // Auto-focus OTP
+        document.querySelectorAll(".otp-input").forEach((inp, i, arr) => {
+            inp.addEventListener("input", () => {
+                if (inp.value && i < 5) arr[i+1].focus();
+            });
+        });
+    }
+    else if (step === 'reset') {
+        // Create the reset password form directly instead of fetching
+        popupBody.innerHTML = `
+            <h4 class="text-center mb-3">Reset Password</h4>
+            <p class="text-center text-muted mb-3">Enter your new password</p>
+            <form method="post" action="{% url 'login' %}" id="reset-form">
+                {% csrf_token %}
+                <input type="hidden" name="reset_password" value="1">
+                <input type="hidden" name="email" value="${data.email}">
+                <input type="hidden" name="otp" value="${data.otp}">
+                
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="password" placeholder="Enter new password" required>
+                        <button type="button" class="btn btn-outline-secondary toggle-password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" name="confirm_password" placeholder="Confirm your password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-success w-100">Reset Password</button>
+            </form>
+            <button type="button" id="close-email" class="btn btn-outline-danger mt-3 w-100">Close</button>
+        `;
+
+        // Add password toggle functionality
+        const toggleBtn = popupBody.querySelector('.toggle-password');
+        const passwordField = popupBody.querySelector('input[name="password"]');
+        const icon = toggleBtn?.querySelector('i');
+        
+        toggleBtn?.addEventListener('click', function() {
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                passwordField.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    }
+}
+
+// ====================== AUTO-SHOW ON PAGE LOAD (Django context) ======================
+{% if show_otp_form %}
+    showStep('otp', { email: "{{ email|escapejs }}" });
+    popup.style.display = "flex";
+{% elif show_reset %}
+    showStep('reset', { email: "{{ email|escapejs }}", otp: "{{ otp|escapejs }}" });
+    popup.style.display = "flex";
+{% endif %}
+
+
+
+</script>
 {% endblock %}

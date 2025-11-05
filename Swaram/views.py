@@ -29,24 +29,24 @@ def admin_required(view_func):
     return decorated_view_func
 
 
-# --- Authentication ---
-def register_view(request):
-    if request.user.is_authenticated:
-        return redirect('landing_page')
-    if request.method == 'POST':
-        username = request.POST['username']
-        full_name = request.POST['full_name']
-        password = request.POST['password']
-        if not username or not full_name or not password:
-            messages.error(request, 'All fields are required.')
-            return redirect('register')
-        if User.objects.filter(username=username).exists():
-            messages.warning(request, 'Username already exists.')
-        else:
-            user = User.objects.create_user(username=username, password=password, full_name=full_name, role='employee')
-            messages.success(request, 'Account created! You can log in.')
-            return redirect('login')
-    return render(request, 'register.html')
+# # --- Authentication ---
+# def register_view(request):
+#     if request.user.is_authenticated:
+#         return redirect('landing_page')
+#     if request.method == 'POST':
+#         username = request.POST['username']
+#         full_name = request.POST['full_name']
+#         password = request.POST['password']
+#         if not username or not full_name or not password:
+#             messages.error(request, 'All fields are required.')
+#             return redirect('register')
+#         if User.objects.filter(username=username).exists():
+#             messages.warning(request, 'Username already exists.')
+#         else:
+#             user = User.objects.create_user(username=username, password=password, full_name=full_name, role='employee')
+#             messages.success(request, 'Account created! You can log in.')
+#             return redirect('login')
+#     return render(request, 'register.html')
 
 
 
@@ -174,45 +174,209 @@ from werkzeug.security import check_password_hash  # Flask password checking
 
 User = get_user_model()
 
+from django.contrib.auth import authenticate, login
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.hashers import make_password
+from .models import User, EmailOTP
+from .utils import send_otp_to_email  # Make sure this exists
+from werkzeug.security import check_password_hash
+
+
+# def login_view(request):
+#     if request.method == 'POST':
+#         # STEP A: LOGIN REQUEST
+#         if 'login' in request.POST:
+#             username = request.POST.get('username')
+#             password = request.POST.get('password')
+
+#             # --- 1️⃣ Try normal Django authentication ---
+#             user = authenticate(request, username=username, password=password)
+#             if user:
+#                 login(request, user)
+#                 messages.success(request, "Login successful!")
+#                 return redirect('landing_page')
+
+#             # --- 2️⃣ Fallback to Flask hash verification ---
+#             try:
+#                 user_obj = User.objects.get(username=username)
+#                 if user_obj.password.startswith(("scrypt:", "pbkdf2:")):
+#                     if check_password_hash(user_obj.password, password):
+#                         # ✅ Flask password matched — migrate to Django hash
+#                         user_obj.password = make_password(password)
+#                         user_obj.save(update_fields=["password"])
+#                         login(request, user_obj)
+#                         messages.success(request, "Login successful! (Password migrated)")
+#                         return redirect('landing_page')
+#             except User.DoesNotExist:
+#                 pass
+
+#             messages.error(request, "Invalid username or password.")
+#             return redirect('login')
+
+#         # STEP B: FORGOT PASSWORD - SEND OTP
+#         elif 'send_otp' in request.POST:
+#             email = request.POST.get('email')
+#             if not User.objects.filter(email=email).exists():
+#                 messages.error(request, "No user found with this email.")
+#                 return redirect('login')
+
+#             send_otp_to_email(email)
+#             messages.success(request, f"OTP sent to {email}. Please verify.")
+#             return render(request, 'verify_reset_otp.html', {'email': email})
+
+#         # STEP C: VERIFY OTP & RESET PASSWORD
+#         elif 'reset_password' in request.POST:
+#             email = request.POST.get('email')
+#             otp = request.POST.get('otp')
+#             password = request.POST.get('password')
+#             confirm_password = request.POST.get('confirm_password')
+
+#             try:
+#                 otp_record = EmailOTP.objects.get(email=email, otp=otp)
+#                 if otp_record.is_expired():
+#                     messages.error(request, "OTP expired! Please resend OTP.")
+#                     return redirect('login')
+
+#                 if password != confirm_password:
+#                     messages.error(request, "Passwords do not match.")
+#                     return render(request, 'set_new_password.html', {'email': email})
+
+#                 user = User.objects.get(email=email)
+#                 user.set_password(password)
+#                 user.save()
+#                 otp_record.delete()
+#                 messages.success(request, "Password reset successful! Please log in.")
+#                 return redirect('login')
+
+#             except EmailOTP.DoesNotExist:
+#                 messages.error(request, "Invalid OTP.")
+#                 return render(request, 'set_new_password.html', {'email': email})
+
+#     return render(request, 'login.html')
+
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
 
-        # --- 1️⃣ Try normal Django authentication ---
-        user = authenticate(request, username=username, password=password)
-        if user:
-            login(request, user)
-            messages.success(request, "Login successful!")
-            return redirect('landing_page')
+        # ------------------------------------------------------------------
+        # STEP A – NORMAL LOGIN
+        # ------------------------------------------------------------------
+        if ('username' in request.POST and
+            'password' in request.POST and
+            'send_otp' not in request.POST):
 
-        # --- 2️⃣ Fallback to Flask hash verification ---
-        try:
-            user_obj = User.objects.get(username=username)
+            username = request.POST.get('username')
+            password = request.POST.get('password')
 
-            # Detect old Flask hash formats
-            if user_obj.password.startswith("scrypt:") or user_obj.password.startswith("pbkdf2:"):
-                if check_password_hash(user_obj.password, password):
-                    # ✅ Flask password matched — migrate to Django format
-                    user_obj.password = make_password(password)
-                    user_obj.save(update_fields=["password"])
+            user = authenticate(request, username=username, password=password)
+            if user:
+                login(request, user)
+                messages.success(request, "Login successful!")
+                return redirect('landing_page')
 
-                    login(request, user_obj)
-                    messages.success(
-                        request,
-                        "Login successful! (Password migrated from Flask to Django format)"
-                    )
-                    return redirect('landing_page')
+            # ----- Try old Flask-style password hashes -----
+            try:
+                user_obj = User.objects.get(username=username)
+                if user_obj.password.startswith(("scrypt:", "pbkdf2:")):
+                    if check_password_hash(user_obj.password, password):
+                        user_obj.password = make_password(password)
+                        user_obj.save(update_fields=["password"])
+                        login(request, user_obj)
+                        messages.success(request,
+                                         "Login successful! (Password migrated)")
+                        return redirect('landing_page')
+            except User.DoesNotExist:
+                pass
 
-        except User.DoesNotExist:
-            pass
+            messages.error(request, "Invalid username or password.")
+            return redirect('login')
 
-        # --- 3️⃣ If both methods fail ---
-        messages.error(request, "Invalid username or password.")
-        return redirect('login')
+        # ------------------------------------------------------------------
+        # STEP B – SEND OTP
+        # ------------------------------------------------------------------
+        elif 'send_otp' in request.POST:
+            email = request.POST.get('email')
+            if not User.objects.filter(email=email).exists():
+                messages.error(request, "No user found with this email.")
+                return redirect('login')
 
+            send_otp_to_email(email)
+            messages.success(request, f"OTP sent to {email}.")
+            return render(request, 'login.html', {
+                'show_otp_form': True,
+                'email': email
+            })
+
+        # ------------------------------------------------------------------
+        # STEP C – VERIFY OTP
+        # ------------------------------------------------------------------
+        elif 'verify_otp' in request.POST:
+            email = request.POST.get('email')
+            otp = ''.join(request.POST.get(f'otp_digit_{i}', '') for i in range(1, 7))
+
+            try:
+                otp_rec = EmailOTP.objects.get(email=email, otp=otp)
+                if otp_rec.is_expired():
+                    raise ValueError("expired")
+
+                # OTP is valid → show reset-password page
+                return render(request, 'login.html', {
+                    'show_reset': True,
+                    'email': email,
+                    'otp': otp
+                })
+
+            except (EmailOTP.DoesNotExist, ValueError):
+                messages.error(request, "Invalid or expired OTP.")
+                return render(request, 'login.html', {
+                    'show_otp_form': True,
+                    'email': email
+                })
+
+        # ------------------------------------------------------------------
+        # STEP D – RESET PASSWORD
+        # ------------------------------------------------------------------
+        elif 'reset_password' in request.POST:
+            email = request.POST.get('email')
+            otp   = request.POST.get('otp')
+            pw    = request.POST.get('password')
+            cpw   = request.POST.get('confirm_password')
+
+            if pw != cpw:
+                messages.error(request, "Passwords do not match.")
+                return render(request, 'login.html', {
+                    'show_reset': True,
+                    'email': email,
+                    'otp': otp
+                })
+
+            try:
+                otp_rec = EmailOTP.objects.get(email=email, otp=otp)
+                if otp_rec.is_expired():
+                    messages.error(request, "OTP expired! Please resend OTP.")
+                    return redirect('login')
+
+                user = User.objects.get(email=email)
+                user.set_password(pw)
+                user.save()
+                otp_rec.delete()
+
+                messages.success(request,
+                                 "Password reset successful! Please log in.")
+                return redirect('login')
+
+            except EmailOTP.DoesNotExist:
+                messages.error(request, "Invalid OTP.")
+                return render(request, 'login.html', {
+                    'show_reset': True,
+                    'email': email,
+                    'otp': otp
+                })
+
+    # ------------------------------------------------------------------
+    # GET request → normal login page
+    # ------------------------------------------------------------------
     return render(request, 'login.html')
-
 
 User = get_user_model()
 
@@ -977,49 +1141,6 @@ from django.utils import timezone
 from .models import User, EmailOTP
 from .utils import send_otp_to_email
 
-# STEP 1: Request OTP (enter email)
-def password_reset(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-
-        # Step 1: Send OTP
-        if 'send_otp' in request.POST:
-            if not User.objects.filter(email=email).exists():
-                messages.error(request, "No user found with this email.")
-                return redirect('password_reset')
-
-            send_otp_to_email(email)
-            messages.success(request, f"OTP sent to {email}. Please verify.")
-            return render(request, 'verify_reset_otp.html', {'email': email})
-
-        # Step 2: Verify OTP and reset password
-        elif 'reset_password' in request.POST:
-            otp = request.POST.get('otp')
-            password = request.POST.get('password')
-            confirm_password = request.POST.get('confirm_password')
-
-            try:
-                otp_record = EmailOTP.objects.get(email=email, otp=otp)
-                if otp_record.is_expired():
-                    messages.error(request, "OTP expired! Please resend OTP.")
-                    return redirect('password_reset')
-
-                if password != confirm_password:
-                    messages.error(request, "Passwords do not match.")
-                    return render(request, 'set_new_password.html', {'email': email})
-
-                user = User.objects.get(email=email)
-                user.set_password(password)
-                user.save()
-                otp_record.delete()
-                messages.success(request, "Password reset successful! Please log in.")
-                return redirect('login')
-
-            except EmailOTP.DoesNotExist:
-                messages.error(request, "Invalid OTP.")
-                return render(request, 'set_new_password.html', {'email': email})
-
-    return render(request, 'password_reset.html')
 
 
 # STEP 2: OTP verification page
@@ -1050,3 +1171,50 @@ def resend_reset_otp(request):
         return render(request, 'verify_otp.html', {'email': email})
     messages.error(request, "Invalid email.")
     return redirect('password_reset')
+
+
+
+def set_new_password(request):
+    email = request.GET.get('email')
+    otp = request.GET.get('otp')
+
+    if request.method == 'POST' and 'reset_password' in request.POST:
+        # === HANDLE PASSWORD RESET ===
+        email = request.POST.get('email')
+        otp = request.POST.get('otp')
+        pw = request.POST.get('password')
+        cpw = request.POST.get('confirm_password')
+
+        if pw != cpw:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'new_reset_password.html', {
+                'email': email,
+                'otp': otp
+            })
+
+        try:
+            otp_rec = EmailOTP.objects.get(email=email, otp=otp)
+            if otp_rec.is_expired():
+                messages.error(request, "OTP expired.")
+                return redirect('login')
+
+            user = User.objects.get(email=email)
+            user.set_password(pw)
+            user.save()
+            otp_rec.delete()
+
+            messages.success(request, "Password reset successful! Please log in.")
+            return redirect('login')
+
+        except (EmailOTP.DoesNotExist, User.DoesNotExist):
+            messages.error(request, "Invalid request.")
+            return redirect('login')
+
+    # === GET request: show form ===
+    if not email or not otp:
+        return redirect('login')
+
+    return render(request, 'new_reset_password.html', {
+        'email': email,
+        'otp': otp
+    })
