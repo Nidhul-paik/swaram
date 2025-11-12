@@ -2,7 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.login_view, name='login'),  # 👈 Root URL shows login page
+    path('login_view', views.login_view, name='login'),  # 👈 Root URL shows login page
+    path('', views.home_page, name='home_page'),
     path('landing_page/', views.landing_page, name='landing_page'),
     path('logout/', views.logout_view, name='logout'),
     path('register/', views.register_view, name='register'),
@@ -32,4 +33,5 @@ urlpatterns = [
     path('verify-reset-otp/', views.verify_reset_otp, name='verify_reset_otp'),
     path('resend-reset-otp/', views.resend_reset_otp, name='resend_reset_otp'),
     path('set_new_password/', views.set_new_password, name='set_new_password'),
+    path('intern_contribution/', views.intern_contribution, name='intern_contribution'),
 ]

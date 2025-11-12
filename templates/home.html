@@ -2,260 +2,552 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home</title>
-  {# --- Bootstrap CSS CDN --- #}
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
-  {# --- Font Awesome CSS CDN --- #}
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  {# --- Your Custom CSS --- #}
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    {# --- Bootstrap CSS CDN --- #}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    {# --- Font Awesome CSS CDN --- #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+        integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    {# --- Bootstrap Icons (optional, but used for feature icons) --- #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    {# --- Your Custom CSS --- #}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
-  <style>
-    /* Adjust padding-top for the fixed header */
-    body {
-     font-family: 'Open Sans', Arial, sans-serif;
-    }
-  </style>
-</head>
-<body>
-  {% include 'header.html' %}
-
-  <main>
-    <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel"> {# Changed data-ride to data-bs-ride for Bootstrap 5 #}
-      <div class="carousel-indicators">
-        <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-        <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
-        <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
-      </div>
-      <div class="carousel-inner">
-        <div class="carousel-item active">
-          <img class="d-block w-100" src="{% static 'images/caro1.jpg' %}" alt="First slide">
-        </div>
-        <div class="carousel-item">
-          <img class="d-block w-100" src="{% static 'images/download.jpeg' %}" alt="Second slide">
-        </div>
-        <div class="carousel-item">
-          <img class="d-block w-100" src="{% static 'images/carousel3.jpeg' %}" alt="Third slide">
-        </div>
-      </div>
-      <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span> {# Changed sr-only to visually-hidden #}
-      </button>
-      <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span> {# Changed sr-only to visually-hidden #}
-      </button>
-    </div>
-  </main>
-
-  <section id="about">
     <style>
+        body {
+            font-family: 'Open Sans', Arial, sans-serif;
+            margin: 0;
+            /* Ensure no default body margin */
+            padding: 0;
+            /* Ensure no default body padding */
+            background-color: #f0f8ff;
+            /* Default background for the entire page */
+            overflow-x: hidden;
+            /* Prevent horizontal scrollbars */
+        }
+
+        /* Loader Specific Styles */
+        #swaram-wave-loader {
+            position: fixed;
+            /* Stays on top */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f8ff;
+            /* Match page background */
+            display: flex;
+            /* To center the text */
+            justify-content: center;
+            align-items: center;
+            font-size: 8vw;
+            /* Responsive font size */
+            font-weight: bold;
+            color: #333;
+            /* Dark grey text color */
+            z-index: 9999;
+            /* Ensure it's on top of everything */
+            opacity: 1;
+            /* Start visible */
+            visibility: visible;
+            /* Start visible */
+            /* Transition: opacity fades out in 0.5s, visibility becomes hidden after that 0.5s delay */
+            transition: opacity 0.5s ease-out, visibility 0s linear 0.5s;
+        }
+
+        .wave-letter {
+            display: inline-block;
+            animation: waveEffect 1.5s infinite ease-in-out;
+            animation-delay: calc(var(--index) * 0.1s);
+        }
+
+        .wave-letter:nth-child(1) {
+            --index: 0;
+        }
+
+        .wave-letter:nth-child(2) {
+            --index: 1;
+        }
+
+        .wave-letter:nth-child(3) {
+            --index: 2;
+        }
+
+        .wave-letter:nth-child(4) {
+            --index: 3;
+        }
+
+        .wave-letter:nth-child(5) {
+            --index: 4;
+        }
+
+        .wave-letter:nth-child(6) {
+            --index: 5;
+        }
+
+        @keyframes waveEffect {
+
+            0%,
+            100% {
+                transform: translateY(0);
+                color: #333;
+            }
+
+            50% {
+                transform: translateY(-20px);
+                color: #007bff;
+            }
+        }
+
+        /* Hide the loader when the 'loaded' class is added to the body */
+        body.loaded #swaram-wave-loader {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Main Content Styles - Initially Hidden */
+        #main-content {
+            opacity: 0;
+            /* Start completely transparent */
+            transform: translateY(20px);
+            /* Start slightly off-screen to animate in */
+            /* Transition to show content after loader fades out.
+           Delay by 0.5s to start showing after loader *starts* fading. */
+            transition: opacity 0.8s ease-out 0.5s, transform 0.8s ease-out 0.5s;
+        }
+
+        /* Show main content when the 'loaded' class is added to the body */
+        body.loaded #main-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Existing styles for your content (moved from inline) */
         .section-title {
             font-size: 2.5rem;
             font-weight: 700;
-            color: #007bff; /* Primary blue for titles */
+            color: #007bff;
+            /* Primary blue for titles */
             margin-bottom: 1.5rem;
         }
+
         .section-subtitle {
             font-size: 1.5rem;
-            color: #343a40; /* Darker text for subtitles */
+            color: #343a40;
+            /* Darker text for subtitles */
             margin-bottom: 2rem;
         }
+
         .card-header {
-            background-color: #f8f9fa; /* Light grey header */
+            background-color: #f8f9fa;
+            /* Light grey header */
             border-bottom: 1px solid #e9ecef;
             font-weight: 600;
             color: #007bff;
         }
+
         .feature-icon {
             font-size: 2rem;
             color: #007bff;
             margin-right: 0.5rem;
         }
+
         .list-group-item strong {
-            color: #0056b3; /* Darker blue for emphasis */
+            color: #0056b3;
+            /* Darker blue for emphasis */
         }
+
         .btn-primary {
             background-color: #007bff;
             border-color: #007bff;
         }
+
         .btn-primary:hover {
             background-color: #0056b3;
             border-color: #0056b3;
         }
+
+        .map-responsive {
+            overflow: hidden;
+            padding-bottom: 56.25%;
+            position: relative;
+            height: 0;
+        }
+
+        .map-responsive iframe {
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            position: absolute;
+        }
+
+        .btn-social-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-social-icon.facebook {
+            background-color: #3b5998;
+        }
+
+        .btn-social-icon.twitter {
+            background-color: #00acee;
+        }
+
+        .btn-social-icon.linkedin {
+            background-color: #0e76a8;
+        }
+
+        .btn-social-icon.youtube {
+            background-color: #c4302b;
+        }
+
+        .btn-social-icon:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
+
 <body>
-
-    <div class="container my-5">
-        <div class="row text-center mb-5">
-            <div class="col-12">
-                <h1 class="section-title">About ICFOSS Swaram Platform</h1>
-                <p class="section-subtitle">Welcome to Swaram – Your Voice, Amplified!</p>
-            </div>
-        </div>
-
-        <div class="row align-items-center mb-5">
-            <div class="col-lg-7">
-                <p class="lead">
-                    The ICFOSS Swaram Platform is a cutting-edge initiative dedicated to revolutionizing data collection for speech technologies. We believe that diverse voices are the key to building truly inclusive and effective AI models. Swaram empowers individuals like you to contribute to this mission by providing a seamless and engaging platform for submitting speech data.
-                </p>
-            </div>
-            <div class="col-lg-5 text-center">
-                <!-- Placeholder for an image related to speech data collection or AI -->
-                <img src="{% static 'images/about.jpeg'%}" class="img-fluid rounded shadow-sm" alt="Swaram Platform - Speech Data Collection">
-            </div>
-        </div>
-
-        <div class="row mb-5">
-            <div class="col-12">
-                <h2 class="section-subtitle text-center">Why Swaram?</h2>
-                <p>
-                    In the world of Artificial Intelligence, the quality and diversity of training data are paramount. Speech recognition, natural language understanding, and other voice-enabled technologies rely heavily on vast datasets of human speech. However, many existing datasets lack the richness and representation needed to accurately serve all communities and languages.
-                </p>
-                <p>
-                    Swaram addresses this challenge head-on. By creating an accessible and user-friendly platform, we encourage participation from a wide range of speakers, dialects, and linguistic backgrounds. Your contributions directly help us to:
-                </p>
-            </div>
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary"><i class="bi bi-graph-up-arrow feature-icon"></i> Improve Accuracy</h5>
-                        <p class="card-text">More diverse data leads to AI models that understand and respond more accurately to a broader spectrum of voices.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary"><i class="bi bi-people-fill feature-icon"></i> Foster Inclusivity</h5>
-                        <p class="card-text">By representing more languages and accents, we help bridge the digital divide and ensure AI technologies are accessible to everyone.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary"><i class="bi bi-lightbulb-fill feature-icon"></i> Drive Innovation</h5>
-                        <p class="card-text">Your data fuels cutting-edge research and development in speech technology, leading to new breakthroughs and applications.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-5">
-            <div class="col-12 text-center">
-                <h2 class="section-subtitle">ICFOSS's Latest Advancements in Speech Technology</h2>
-                <p class="lead">
-                    We are thrilled to announce significant improvements to our speech project, directly integrated with the Swaram platform. Our dedicated team of researchers and engineers has been working tirelessly to develop advanced pipelines and models that push the boundaries of speech processing.
-                </p>
-            </div>
-            <div class="col-lg-6 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-header">
-                        Key Highlights
-                    </div>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item"><strong>Enhanced Data Pipelines:</strong> Designed for greater efficiency, accuracy, and scalability in processing your submitted data.</li>
-                        <li class="list-group-item"><strong>State-of-the-Art Models:</strong> New, sophisticated deep learning models for superior speech processing.</li>
-                        <li class="list-group-item"><strong>Focus on Low-Resource Languages:</strong> Bolstering support to extend benefits beyond dominant global languages.</li>
-                        <li class="list-group-item"><strong>Robustness and Generalization:</strong> More resilient models to variations in speaking style, noise, and accents.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="col-lg-6 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-header">
-                        Our New Capabilities
-                    </div>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item"><strong>Automatic Speech Recognition (ASR):</strong> Greater accuracy in transcribing spoken language to text.</li>
-                        <li class="list-group-item"><strong>Speaker Diarization:</strong> Improved identification and distinction between different speakers.</li>
-                        <li class="list-group-item"><strong>Language Identification:</strong> Better automatic detection of the language being spoken.</li>
-                        <li class="list-group-item"><strong>Emotion Recognition:</strong> Advancements in identifying emotional cues from speech patterns.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <section class="py-5 text-center bg-light position-relative overflow-hidden">
-    {# Optional: Add a subtle background pattern or image here via CSS for more attraction #}
-    {# Example: <div class="bg-pattern" style="background-image: url('{% static 'images/voice_contribution.png' %}'); opacity: 0.1; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;"></div> #}
-
-        <div class="container position-relative z-index-1">
-            <div class="row align-items-center">
-                <div class="col-md-6 mb-4 mb-md-0">
-                    <h2 class="section-subtitle fw-bold text-primary mb-3">Join the Swaram Community!</h2>
-                    <p class="lead mb-4">
-                        Your voice has the power to shape the future of technology. By contributing to the ICFOSS Swaram Platform, you become an integral part of a global movement to build more intelligent, inclusive, and accessible AI.
-                    </p>
-
-                    <div class="row text-start my-4">
-                        <div class="col-sm-6 mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-microphone-alt fa-2x text-info me-3"></i>
-                                <div>
-                                    <h5 class="fw-bold">Amplify Your Voice</h5>
-                                    <p class="text-muted mb-0 small">Contribute to a diverse and inclusive AI.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-globe fa-2x text-success me-3"></i>
-                                <div>
-                                    <h5 class="fw-bold">Global Impact</h5>
-                                    <p class="text-muted mb-0 small">Join a worldwide community of innovators.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-brain fa-2x text-warning me-3"></i>
-                                <div>
-                                    <h5 class="fw-bold">Advance AI</h5>
-                                    <p class="text-muted mb-0 small">Help build smarter, more accessible tech.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-handshake fa-2x text-danger me-3"></i>
-                                <div>
-                                    <h5 class="fw-bold">Be Part of the Future</h5>
-                                    <p class="text-muted mb-0 small">Shape the next generation of voice AI.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <a href="#" class="btn btn-primary btn-lg px-5 py-3 shadow-lg mt-3">Contribute Your Voice Today!</a>
-                </div>
-                <div class="col-md-6">
-                    {# Image for attraction #}
-                    <img src="{% static 'images/voice_contribution.png' %}" alt="Community contributing voice data" class="img-fluid rounded shadow-lg">
-                </div>
-            </div>
-        </div>
-    </section>
+    <div id="swaram-wave-loader">
+        <span class="wave-letter">S</span>
+        <span class="wave-letter">W</span>
+        <span class="wave-letter">A</span>
+        <span class="wave-letter">R</span>
+        <span class="wave-letter">A</span>
+        <span class="wave-letter">M</span>
     </div>
+    {% include 'header.html' %}
+    <div id="main-content"> {# --- NEW CONTAINER FOR ALL YOUR PAGE CONTENT --- #}
+        
+
+        <main>
+            <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                    <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0"
+                        class="active" aria-current="true" aria-label="Slide 1"></button>
+                    <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1"
+                        aria-label="Slide 2"></button>
+                    <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2"
+                        aria-label="Slide 3"></button>
+                </div>
+                <div class="carousel-inner">
+                    <div class="carousel-item active">
+                        <img class="d-block w-100" src="{% static 'images/caro1.jpg' %}" alt="First slide">
+                    </div>
+                    <div class="carousel-item">
+                        <img class="d-block w-100" src="{% static 'images/download.jpeg' %}" alt="Second slide">
+                    </div>
+                    <div class="carousel-item">
+                        <img class="d-block w-100" src="{% static 'images/carousel3.jpeg' %}" alt="Third slide">
+                    </div>
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators"
+                    data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators"
+                    data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+            </div>
+        </main>
+
+        <section id="about">
+            <div class="container my-5">
+                <div class="row text-center mb-5">
+                    <div class="col-12">
+                        <h1 class="section-title">About ICFOSS Swaram Platform</h1>
+                        <p class="section-subtitle">Welcome to Swaram – Your Voice, Amplified!</p>
+                    </div>
+                </div>
+
+                <div class="row align-items-center mb-5">
+                    <div class="col-lg-7">
+                        <p class="lead">
+                            The ICFOSS Swaram Platform is a cutting-edge initiative dedicated to revolutionizing data
+                            collection for speech technologies. We believe that diverse voices are the key to building
+                            truly inclusive and effective AI models. Swaram empowers individuals like you to contribute
+                            to this mission by providing a seamless and engaging platform for submitting speech data.
+                        </p>
+                    </div>
+                    <div class="col-lg-5 text-center">
+                        <img src="{% static 'images/about.jpeg'%}" class="img-fluid rounded shadow-sm"
+                            alt="Swaram Platform - Speech Data Collection">
+                    </div>
+                </div>
+
+                <div class="row mb-5">
+                    <div class="col-12">
+                        <h2 class="section-subtitle text-center">Why Swaram?</h2>
+                        <p>
+                            In the world of Artificial Intelligence, the quality and diversity of training data are
+                            paramount. Speech recognition, natural language understanding, and other voice-enabled
+                            technologies rely heavily on vast datasets of human speech. However, many existing datasets
+                            lack the richness and representation needed to accurately serve all communities and
+                            languages.
+                        </p>
+                        <p>
+                            Swaram addresses this challenge head-on. By creating an accessible and user-friendly
+                            platform, we encourage participation from a wide range of speakers, dialects, and linguistic
+                            backgrounds. Your contributions directly help us to:
+                        </p>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary"><i class="bi bi-graph-up-arrow feature-icon"></i>
+                                    Improve Accuracy</h5>
+                                <p class="card-text">More diverse data leads to AI models that understand and respond
+                                    more accurately to a broader spectrum of voices.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary"><i class="bi bi-people-fill feature-icon"></i>
+                                    Foster Inclusivity</h5>
+                                <p class="card-text">By representing more languages and accents, we help bridge the
+                                    digital divide and ensure AI technologies are accessible to everyone.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary"><i class="bi bi-lightbulb-fill feature-icon"></i>
+                                    Drive Innovation</h3>
+                                    <p class="card-text">Your data fuels cutting-edge research and development in speech
+                                        technology, leading to new breakthroughs and applications.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-5">
+                    <div class="col-12 text-center">
+                        <h2 class="section-subtitle">ICFOSS's Latest Advancements in Speech Technology</h2>
+                        <p class="lead">
+                            We are thrilled to announce significant improvements to our speech project, directly
+                            integrated with the Swaram platform. Our dedicated team of researchers and engineers has
+                            been working tirelessly to develop advanced pipelines and models that push the boundaries of
+                            speech processing.
+                        </p>
+                    </div>
+                    <div class="col-lg-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header">
+                                Key Highlights
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><strong>Enhanced Data Pipelines:</strong> Designed for
+                                    greater efficiency, accuracy, and scalability in processing your submitted data.
+                                </li>
+                                <li class="list-group-item"><strong>State-of-the-Art Models:</strong> New, sophisticated
+                                    deep learning models for superior speech processing.</li>
+                                <li class="list-group-item"><strong>Focus on Low-Resource Languages:</strong> Bolstering
+                                    support to extend benefits beyond dominant global languages.</li>
+                                <li class="list-group-item"><strong>Robustness and Generalization:</strong> More
+                                    resilient models to variations in speaking style, noise, and accents.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header">
+                                Our New Capabilities
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><strong>Automatic Speech Recognition (ASR):</strong> Greater
+                                    accuracy in transcribing spoken language to text.</li>
+                                <li class="list-group-item"><strong>Speaker Diarization:</strong> Improved
+                                    identification and distinction between different speakers.</li>
+                                <li class="list-group-item"><strong>Language Identification:</strong> Better automatic
+                                    detection of the language being spoken.</li>
+                                <li class="list-group-item"><strong>Emotion Recognition:</strong> Advancements in
+                                    identifying emotional cues from speech patterns.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="py-5 text-center bg-light position-relative overflow-hidden">
+                    <div class="container position-relative z-index-1">
+                        <div class="row align-items-center">
+                            <div class="col-md-6 mb-4 mb-md-0">
+                                <h2 class="section-subtitle fw-bold text-primary mb-3">Join the Swaram Community!</h2>
+                                <p class="lead mb-4">
+                                    Your voice has the power to shape the future of technology. By contributing to the
+                                    ICFOSS Swaram Platform, you become an integral part of a global movement to build
+                                    more intelligent, inclusive, and accessible AI.
+                                </p>
+
+                                <div class="row text-start my-4">
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-microphone-alt fa-2x text-info me-3"></i>
+                                            <div>
+                                                <h5 class="fw-bold">Amplify Your Voice</h5>
+                                                <p class="text-muted mb-0 small">Contribute to a diverse and inclusive
+                                                    AI.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-globe fa-2x text-success me-3"></i>
+                                            <div>
+                                                <h5 class="fw-bold">Global Impact</h5>
+                                                <p class="text-muted mb-0 small">Join a worldwide community of
+                                                    innovators.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-brain fa-2x text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="fw-bold">Advance AI</h5>
+                                                <p class="text-muted mb-0 small">Help build smarter, more accessible
+                                                    tech.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-handshake fa-2x text-danger me-3"></i>
+                                            <div>
+                                                <h5 class="fw-bold">Be Part of the Future</h5>
+                                                <p class="text-muted mb-0 small">Shape the next generation of voice AI.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <a href="{% url 'intern_contribution' %}" class="btn btn-primary btn-lg px-5 py-3 shadow-lg mt-3">Contribute Your
+                                    Voice Today!</a>
+                            </div>
+                            <div class="col-md-6">
+                                <img src="{% static 'images/voice_contribution.png' %}"
+                                    alt="Community contributing voice data" class="img-fluid rounded shadow-lg">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+        <section class="connect-with-swaram py-5">
+            <div class="container">
+                <h2 class="text-center mb-5 section-title">Connect with Swaram</h2>
+                <div class="card p-4 shadow-sm">
+                    <div class="row g-4">
+                        <div class="col-md-6 border-end-md">
+                            <h3 class="mb-4">Get in Touch</h3>
+                            <ul class="list-unstyled contact-info-list">
+                                <li>
+                                    <i class="fas fa-map-marker-alt fa-fw me-2"></i>
+                                    <strong>Address:</strong><br>
+                                    ICFOSS (International Centre for Free and Open Source Software)<br>
+                                    Technopark Campus, Karyavattom<br>
+                                    Trivandrum, Kerala, India - 695 581
+                                </li>
+                                <li class="mt-3">
+                                    <i class="fas fa-phone-alt fa-fw me-2"></i>
+                                    <strong>Phone:</strong><br>
+                                    +91 471 270 0013 | +91 471 270 0012
+                                </li>
+                                <li class="mt-3">
+                                    <i class="fas fa-envelope fa-fw me-2"></i>
+                                    <strong>Email:</strong><br>
+                                    info@icfoss.in | swaram@icfoss.in
+                                </li>
+                                <li class="mt-3">
+                                    <i class="fas fa-clock fa-fw me-2"></i>
+                                    <strong>Monday - Friday:</strong> 9:00 AM - 5:00 PM (IST)
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="mb-4">Send us a Message</h3>
+                            <form>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="name" placeholder="Name">
+                                </div>
+                                <div class="mb-3">
+                                    <input type="email" class="form-control" id="email" placeholder="Email">
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="subject" placeholder="Subject">
+                                </div>
+                                <div class="mb-3">
+                                    <textarea class="form-control" id="message" rows="4"
+                                        placeholder="Message"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 send-message-btn">Send
+                                    Message</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-5">
+                    <div class="col-md-8 mx-auto">
+                        <div class="card p-3 shadow-sm map-card">
+                            <h4 class="mb-3 text-center">Our Location</h4>
+                            <!-- Embedded Google Map - Replace with your actual embed code -->
+                            <div class="map-responsive">
+                                <iframe
+                                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3945.748607144865!2d76.87798367584149!3d8.55243289146194!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b05fba71f37cfc1%3A0xc601a4e12e0e017d!2sICFOSS%20(International%20Centre%20for%20Free%20and%20Open%20Source%20Software)!5e0!3m2!1sen!2sin!4v1705663116858!5m2!1sen!2sin"
+                                    width="600" height="300" style="border:0;" allowfullscreen="" loading="lazy"
+                                    referrerpolicy="no-referrer-when-downgrade"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mt-4 mt-md-0">
+                        <div
+                            class="card p-3 shadow-sm social-card h-100 d-flex flex-column justify-content-center align-items-center">
+                            <h4 class="mb-3 text-center">Follow Us</h4>
+                            <div class="social-icons">
+                                <a href="#" class="btn btn-social-icon facebook me-2"><i
+                                        class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="btn btn-social-icon twitter me-2"><i class="fab fa-twitter"></i></a>
+                                <a href="#" class="btn btn-social-icon linkedin me-2"><i
+                                        class="fab fa-linkedin-in"></i></a>
+                                <a href="#" class="btn btn-social-icon youtube"><i class="fab fa-youtube"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
 
-
+    </div> {# --- END OF #main-content --- #}
     {% include 'footer.html' %}
-
-    <!-- Bootstrap JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Bootstrap Icons (optional, but used for feature icons) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-  </section>
-
-  {# --- Bootstrap JavaScript CDN (placed at the end of the body for best performance) --- #}
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    {# --- Bootstrap JS Bundle with Popper --- #}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+        crossorigin="anonymous"></script>
+    {# --- Your Custom JavaScript --- #}
+    <script src="{% static 'js/script.js' %}"></script>
 </body>
+
 </html>
