@@ -113,3 +113,27 @@ class EmailOTP(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.otp}"
+
+
+
+
+
+#-----interns contribution------
+class Intern(models.Model):
+    # This correctly points to the 'user_id' column in the database
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    # Change the field name from 'folder' to 'folder_name' to match the database
+    folder_name = models.CharField(max_length=255)
+
+    def __str__(self):
+        # The __str__ method should return a string representation of the object.
+        # Using the user's username is a great, unique identifier.
+        # self.name would cause an error because a 'name' field doesn't exist.
+        return self.user.username
+
+    # Optional but recommended: Tell Django the table name explicitly
+    # if it can't figure it out from the app/model name.
+    # Since your table is "Swaram_intern", this is a good idea.
+    class Meta:
+        db_table = 'Swaram_intern'

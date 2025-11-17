@@ -1,13 +1,323 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Intern Contribution</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container-fluid">
-        <h2>Welcome, {{ user.get_full_name|default:user.username }}!</h2>
+<body class="bg-light">
+
+{% if access_denied %}
+<div class="container mt-5 text-center">
+    <div class="alert alert-danger">
+        <h2>Access Denied</h2>
+        <p>You are not registered as an intern.</p>
     </div>
+</div>
+
+{% else %}
+<!-- Add CSRF Token Form -->
+<form id="csrfForm" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<div class="container mt-4">
+    <h2>Welcome, {{ user.get_full_name|default:user.username }}!</h2>
+    <hr>
+
+    <!-- Alert container for messages -->
+    <div id="alertContainer"></div>
+
+    <table class="table table-striped align-middle shadow-sm rounded">
+        <thead class="table-dark">
+            <tr>
+                <th class="text-center">SI</th>
+                <th>Audio</th>
+                <th>Transcription</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if audio_data %}
+            {% for item in audio_data %}
+            <tr data-filename="{{ item.filename }}">
+                <td style="width: 5%;" class="text-center fw-bold">{{ forloop.counter }}</td>
+                <td style="width: 25%;">
+                    <audio controls preload="none" style="width: 100%;">
+                        <source src="{{ item.audio_url }}" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                </td>
+                <td>
+                    <textarea class="form-control transcription" rows="2">{{ item.transcription }}</textarea>
+                </td>
+                <td style="width: 20%;">
+                    <button class="btn btn-success btn-sm update-btn">Save</button>
+                    <button class="btn btn-danger btn-sm delete-btn">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No audio files found.</td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+
+    <div class="text-center mb-5">
+        <button id="submitAll" class="btn btn-primary px-4 py-2">All Done</button>
+    </div>
+</div>
+
+<script>
+// Utility function to show alerts
+function showAlert(message, type = 'success') {
+    const alertContainer = document.getElementById('alertContainer');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertContainer.appendChild(alert);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+// Get CSRF token - multiple fallback methods
+function getCSRFToken() {
+    // Method 1: Try to get from hidden form
+    let csrfToken = document.querySelector('#csrfForm [name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        return csrfToken.value;
+    }
+    
+    // Method 2: Try to get from any csrfmiddlewaretoken input
+    csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        return csrfToken.value;
+    }
+    
+    // Method 3: Try to get from cookie (manual parsing)
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    
+    if (cookieValue) {
+        return cookieValue;
+    }
+    
+    // Method 4: Try Django's default cookie name
+    const djangoCookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    
+    if (djangoCookieValue) {
+        return djangoCookieValue;
+    }
+    
+    console.error('CSRF token not found!');
+    showAlert('Security token missing. Please refresh the page.', 'danger');
+    return '';
+}
+
+// Enhanced fetch with error handling
+async function makeRequest(url, data) {
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        throw new Error('CSRF token not available');
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams(data)
+        });
+
+        // Check if response is JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Non-JSON response:", text.substring(0, 200));
+            
+            // Check if it's a login redirect
+            if (text.includes('login') || response.redirected) {
+                throw new Error("Session expired. Please log in again.");
+            }
+            
+            throw new Error("Server returned HTML instead of JSON. Check for Django errors.");
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Request failed:", error);
+        throw error;
+    }
+}
+
+// Save button functionality
+document.querySelectorAll('.update-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const row = e.target.closest('tr');
+        const filename = row.dataset.filename;
+        const transcription = row.querySelector('.transcription').value;
+        
+        if (!filename) {
+            showAlert('Error: No filename found!', 'danger');
+            return;
+        }
+        
+        // Show loading state
+        const originalText = e.target.textContent;
+        e.target.textContent = 'Saving...';
+        e.target.disabled = true;
+
+        try {
+            const data = await makeRequest("", {
+                action: "update",
+                filename: filename,
+                transcription: transcription
+            });
+            
+            if (data.success) {
+                showAlert(data.message || 'Transcription saved successfully!', 'success');
+            } else {
+                showAlert(data.error || 'Error saving transcription!', 'danger');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'danger');
+        } finally {
+            // Always reset button state after 2 seconds
+            setTimeout(() => {
+                e.target.textContent = originalText;
+                e.target.disabled = false;
+            }, 2000);
+        }
+    });
+});
+
+// Delete button functionality
+document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const row = e.target.closest('tr');
+        const filename = row.dataset.filename;
+
+        if (!filename) {
+            showAlert('Error: No filename found!', 'danger');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete this audio file? This action cannot be undone.')) {
+            // Show loading state
+            const originalText = e.target.textContent;
+            e.target.textContent = 'Deleting...';
+            e.target.disabled = true;
+
+            try {
+                const data = await makeRequest("", {
+                    action: "delete",
+                    filename: filename
+                });
+                
+                if (data.success) {
+                    showAlert(data.message || 'File deleted successfully!', 'success');
+                    // Remove row after a short delay
+                    setTimeout(() => {
+                        if (row.parentNode) {
+                            row.remove();
+                            // Update serial numbers
+                            updateSerialNumbers();
+                        }
+                    }, 1000);
+                } else {
+                    showAlert(data.error || 'Error deleting file!', 'danger');
+                    e.target.textContent = originalText;
+                    e.target.disabled = false;
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'danger');
+                e.target.textContent = originalText;
+                e.target.disabled = false;
+            }
+        }
+    });
+});
+
+// Submit All functionality
+document.getElementById("submitAll").addEventListener("click", async () => {
+    if (confirm('Are you sure you want to submit all verified data? This action cannot be undone.')) {
+        const button = document.getElementById("submitAll");
+        const originalText = button.textContent;
+        button.textContent = 'Submitting...';
+        button.disabled = true;
+
+        try {
+            const data = await makeRequest("", {
+                action: "submit"
+            });
+            
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Optional: reload page after success
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showAlert(data.error || 'Error submitting data!', 'danger');
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'danger');
+            button.textContent = originalText;
+            button.disabled = false;
+        }
+    }
+});
+
+// Update serial numbers after delete
+function updateSerialNumbers() {
+    document.querySelectorAll('tbody tr').forEach((row, index) => {
+        const serialCell = row.querySelector('td:first-child');
+        if (serialCell) {
+            serialCell.textContent = index + 1;
+        }
+    });
+}
+
+// Debug: Log available CSRF tokens on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded. Checking for CSRF tokens...');
+    
+    const csrfInputs = document.querySelectorAll('[name=csrfmiddlewaretoken]');
+    console.log(`Found ${csrfInputs.length} CSRF token inputs`);
+    
+    const cookies = document.cookie.split('; ');
+    const csrfCookie = cookies.find(row => row.startsWith('csrftoken='));
+    console.log('CSRF cookie exists:', !!csrfCookie);
+    
+    if (csrfInputs.length === 0) {
+        console.warn('No CSRF token inputs found on page!');
+    }
+});
+</script>
+
+<!-- Include Bootstrap JS for alert dismiss -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endif %}
 </body>
 </html>

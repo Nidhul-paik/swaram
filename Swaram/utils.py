@@ -71,10 +71,19 @@ def send_otp_to_email(email):
     otp = str(random.randint(100000, 999999))
     EmailOTP.objects.filter(email=email).delete()
     EmailOTP.objects.create(email=email, otp=otp)
+    message = f"""
+                Your One-Time Password for the ICFOSS Swaram platform is: {otp}
 
+                This code is valid for 5 minutes.
+
+                If you did not request this, please ignore this email.
+
+                Thank you,
+                The ICFOSS Swaram Team
+                """
     send_mail(
         subject="Your OTP for Registration",
-        message=f"Your OTP is {otp}. It is valid for 5 minutes.",
+        message=message,
         from_email=settings.EMAIL_HOST_USER,   # ✅ use your configured Gmail
         recipient_list=[email],
         fail_silently=False,
