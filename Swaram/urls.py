@@ -34,4 +34,5 @@ urlpatterns = [
     path('resend-reset-otp/', views.resend_reset_otp, name='resend_reset_otp'),
     path('set_new_password/', views.set_new_password, name='set_new_password'),
     path('intern_contribution/', views.intern_contribution, name='intern_contribution'),
+    path('live_progress/', views.live_progress_api, name='live_progress'),
 ]

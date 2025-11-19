@@ -1586,6 +1586,7 @@ def intern_contribution(request):
                 return handle_delete(request, user, intern.folder_name, chunks_path, metadata_path)
             elif action == "update":
                 return handle_update(request, user, metadata_path)
+                
             elif action == "submit":
                 # return handle_submit(request, user, chunks_path, metadata_path)
                 return handle_submit(request, user, intern.folder_name, chunks_path, metadata_path)
@@ -1799,6 +1800,53 @@ def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path)
         traceback.print_exc()
         return JsonResponse({"success": False, "error": f"An unexpected error occurred: {e}"})
         
+# def handle_update(request, user, metadata_path):
+#     filename = request.POST.get("filename")
+#     new_transcription = request.POST.get("transcription", "")
+
+#     if not filename:
+#         return JsonResponse({"success": False, "error": "No filename provided"})
+
+#     cleaned_filename = clean_name(filename)
+#     temp_path = metadata_path + ".tmp"
+#     rows = []
+#     fieldnames = []
+#     updated = False
+
+#     try:
+#         # Read first
+#         with open(metadata_path, "r", encoding="utf-8", newline="") as infile:
+#             reader = csv.DictReader(infile)
+#             fieldnames = reader.fieldnames
+#             for row in reader:
+#                 if clean_name(row.get("filename", "")) == cleaned_filename:
+#                     row["transcription"] = new_transcription
+#                     updated = True
+#                 rows.append(row)
+
+#         if not updated:
+#             return JsonResponse({"success": False, "error": "File not found for update."})
+
+#         # Write second
+#         with open(temp_path, "w", encoding="utf-8", newline="") as outfile:
+#             # THE FIX: Add extrasaction='ignore'
+#             writer = csv.DictWriter(outfile, fieldnames=fieldnames, extrasaction='ignore')
+#             writer.writeheader()
+#             writer.writerows(rows)
+
+#         time.sleep(0.1)
+#         os.replace(temp_path, metadata_path)
+
+#         return JsonResponse({"success": True, "message": "Transcription updated."})
+
+#     except Exception as e:
+#         if os.path.exists(temp_path):
+#             os.remove(temp_path)
+#         return JsonResponse({"success": False, "error": f"An error occurred: {e}"})
+
+
+from .live_progress import live_tracker
+
 def handle_update(request, user, metadata_path):
     filename = request.POST.get("filename")
     new_transcription = request.POST.get("transcription", "")
@@ -1828,7 +1876,6 @@ def handle_update(request, user, metadata_path):
 
         # Write second
         with open(temp_path, "w", encoding="utf-8", newline="") as outfile:
-            # THE FIX: Add extrasaction='ignore'
             writer = csv.DictWriter(outfile, fieldnames=fieldnames, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(rows)
@@ -1836,14 +1883,23 @@ def handle_update(request, user, metadata_path):
         time.sleep(0.1)
         os.replace(temp_path, metadata_path)
 
+        # ✅ LIVE PROGRESS TRACKING - Get total files count
+        folder_path = os.path.dirname(metadata_path)
+        chunks_path = os.path.join(folder_path, "05_final_chunks")
+        total_files = 0
+        if os.path.exists(chunks_path):
+            total_files = len([f for f in os.listdir(chunks_path) if f.endswith('.wav')])
+        
+        # Record the save action
+        live_tracker.record_save_action(user.username, total_files)
+        print(f"📝 Live progress recorded: {user.username} saved transcription")
+
         return JsonResponse({"success": True, "message": "Transcription updated."})
 
     except Exception as e:
         if os.path.exists(temp_path):
             os.remove(temp_path)
         return JsonResponse({"success": False, "error": f"An error occurred: {e}"})
-
-
 
 import csv
 import os
@@ -1933,3 +1989,22 @@ def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path)
         import traceback
         traceback.print_exc()
         return JsonResponse({"success": False, "error": f"A critical error occurred: {e}"})
+
+
+
+
+def live_progress_api(request):
+    """API for live user progress"""
+    try:
+        progress_data = live_tracker.get_live_progress()
+        return JsonResponse(progress_data)
+    except Exception as e:
+        return JsonResponse({
+            'active_users_count': 0,
+            'total_saved': 0,
+            'total_files': 0,
+            'overall_percentage': 0,
+            'active_users': [],
+            'timestamp': time.time(),
+            'message': 'Loading...'
+        })

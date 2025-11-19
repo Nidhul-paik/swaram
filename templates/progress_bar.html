@@ -1,0 +1,178 @@
+<!-- templates/Swaram/live_progress_bar.html -->
+<div id="liveProgressContainer" class="container-fluid bg-dark text-white py-2 border-bottom">
+    <div class="container">
+        <div class="row align-items-center">
+            <!-- Main Progress -->
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <span class="badge bg-warning text-dark fs-6">LIVE</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-light">Live Verification Progress</small>
+                            <small id="liveMessage" class="text-warning">👋 No active verifiers</small>
+                        </div>
+                        <div class="progress" style="height: 20px; background: #2d3748;">
+                            <div id="liveProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%">
+                                <small id="liveProgressText" class="fw-bold">0%</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Live Stats -->
+            <div class="col-md-6">
+                <div class="row text-center">
+                    <div class="col-3">
+                        <div class="border rounded p-1 bg-primary">
+                            <div class="fw-bold fs-6" id="liveActiveUsers">0</div>
+                            <small>Active</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-1 bg-success">
+                            <div class="fw-bold fs-6" id="liveSavedCount">0</div>
+                            <small>Saved</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-1 bg-info">
+                            <div class="fw-bold fs-6" id="liveTotalFiles">0</div>
+                            <small>Total</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <button id="refreshLiveProgress" class="btn btn-sm btn-outline-light w-100">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Users List -->
+        <div class="row mt-2">
+            <div class="col-12">
+                <div id="activeUsersList" class="d-flex flex-wrap gap-1">
+                    <!-- Active users will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.live-user-badge {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    border-radius: 15px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    border: 1px solid rgba(255,255,255,0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.progress-bar-animated {
+    background-image: linear-gradient(45deg, rgba(255,255,255,0.3) 25%, 
+        transparent 25%, transparent 50%, 
+        rgba(255,255,255,0.3) 50%, 
+        rgba(255,255,255,0.3) 75%, 
+        transparent 75%, transparent);
+    background-size: 1rem 1rem;
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% { background-position: 1rem 0; }
+    100% { background-position: 0 0; }
+}
+</style>
+
+<script>
+class LiveProgressTracker {
+    constructor() {
+        this.updateInterval = null;
+        this.init();
+    }
+    
+    init() {
+        this.updateProgress();
+        this.updateInterval = setInterval(() => this.updateProgress(), 10000); // Update every 10 seconds
+        document.getElementById('refreshLiveProgress').addEventListener('click', () => this.updateProgress());
+    }
+    
+    async updateProgress() {
+        const btn = document.getElementById('refreshLiveProgress');
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch('/live_progress/');
+            const data = await response.json();
+            this.updateDisplay(data);
+        } catch (error) {
+            console.error('Error loading live progress:', error);
+        } finally {
+            btn.innerHTML = '🔄';
+            btn.disabled = false;
+        }
+    }
+    
+    updateDisplay(data) {
+        // Update progress bar
+        const percentage = data.overall_percentage;
+        const progressBar = document.getElementById('liveProgressBar');
+        progressBar.style.width = percentage + '%';
+        document.getElementById('liveProgressText').textContent = percentage + '%';
+        
+        // Update stats
+        document.getElementById('liveActiveUsers').textContent = data.active_users_count;
+        document.getElementById('liveSavedCount').textContent = data.total_saved;
+        document.getElementById('liveTotalFiles').textContent = data.total_files;
+        document.getElementById('liveMessage').textContent = data.message;
+        
+        // Update progress bar color
+        this.updateProgressColor(percentage);
+        
+        // Update active users list
+        this.updateActiveUsers(data.active_users);
+    }
+    
+    updateProgressColor(percentage) {
+        const progressBar = document.getElementById('liveProgressBar');
+        progressBar.classList.remove('bg-success', 'bg-warning', 'bg-info', 'bg-danger');
+        
+        if (percentage >= 80) progressBar.classList.add('bg-success');
+        else if (percentage >= 50) progressBar.classList.add('bg-warning');
+        else if (percentage >= 20) progressBar.classList.add('bg-info');
+        else progressBar.classList.add('bg-danger');
+    }
+    
+    updateActiveUsers(users) {
+        const container = document.getElementById('activeUsersList');
+        
+        if (users.length === 0) {
+            container.innerHTML = '<small class="text-muted">No active verifiers</small>';
+            return;
+        }
+        
+        container.innerHTML = users.map(user => `
+            <span class="live-user-badge" title="${user.username}: ${user.saved_count} saves">
+                👤 ${user.username} (${user.saved_count}) • ${user.last_active}
+            </span>
+        `).join('');
+    }
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    new LiveProgressTracker();
+});
+</script>
