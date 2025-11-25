@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Intern Management{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-user-friends me-2"></i>Manage Interns</h1>
+    </div>
+
+    <div class="row">
+
+        <!-- Add Intern Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Add Intern</div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="add_intern">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Enter Username</label>
+                            <input type="text" required name="username" class="form-control">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Add Intern</button>
+
+                        {% if add_message %}
+                            <div class="alert alert-info mt-3">{{ add_message }}</div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assign Task Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">Assign Task</div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="assign_task">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Select Intern</label>
+                            <select name="intern_id" class="form-select" required>
+                                <option value="">-- Select Intern --</option>
+                                {% for intern in interns %}
+                                    <option value="{{ intern.user.id }}">{{ intern.user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Folder Name</label>
+                            <input type="text" required name="folder_name" class="form-control">
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Assign Task</button>
+
+                        {% if assign_message %}
+                            <div class="alert alert-info mt-3">{{ assign_message }}</div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <a href="{% url 'verify_intern' %}" class="btn btn-warning" style="width: 300px; height: 40px; border: 20px; line-height: 40px; text-align:center; display:inline-block; text-decoration:none;">
+        Verification
+    </a>
+
+    
+</div>
+
+
+{% endblock %}

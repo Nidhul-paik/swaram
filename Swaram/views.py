@@ -2008,3 +2008,61 @@ def live_progress_api(request):
             'timestamp': time.time(),
             'message': 'Loading...'
         })
+
+
+# from django.contrib.auth.decorators import login_required
+# from django.contrib.auth.models import User
+# from django.shortcuts import render
+# from .models import SwaramIntern
+
+
+@login_required
+def interns(request):
+    add_message = None
+    assign_message = None
+
+    if request.method == "POST":
+
+        # ------------ ADD INTERN ------------
+        if request.POST.get("form_type") == "add_intern":
+            username = request.POST.get("username")
+
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                add_message = "❌ No user found with this username."
+                return render(request, "interns.html", {
+                    "add_message": add_message,
+                    "assign_message": assign_message,
+                    "interns": Intern.objects.all()
+                })
+
+            # Check if user already an intern
+            if Intern.objects.filter(user=user).exists():
+                add_message = "This user is already an intern."
+            else:
+                Intern.objects.create(folder_name="", user=user)
+                add_message = "Intern added successfully."
+
+        # ------------ ASSIGN TASK ------------
+        if request.POST.get("form_type") == "assign_task":
+            intern_id = request.POST.get("intern_id")
+            folder_name = request.POST.get("folder_name")
+
+            try:
+                intern = Intern.objects.get(user_id=intern_id)
+                intern.folder_name = folder_name
+                intern.save()
+                assign_message = "✅ Task assigned successfully."
+
+            except Intern.DoesNotExist:
+                assign_message = "❌ Intern does not exist."
+
+    return render(request, "interns.html", {
+        "interns": Intern.objects.all(),
+        "add_message": add_message,
+        "assign_message": assign_message
+    })
+
+def verify_intern(request):
+    return render(request, 'verify_intern.html')
