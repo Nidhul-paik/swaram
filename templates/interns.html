@@ -70,9 +70,37 @@
 
     </div>
 
-    <a href="{% url 'verify_intern' %}" class="btn btn-warning" style="width: 300px; height: 40px; border: 20px; line-height: 40px; text-align:center; display:inline-block; text-decoration:none;">
+    <a href="" class="btn btn-warning" style="width: 300px; height: 40px; border: 20px; line-height: 40px; text-align:center; display:inline-block; text-decoration:none;">
         Verification
     </a>
+    <table class="table table-hover table-striped shadow-sm rounded-3">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Folder Name</th>
+            <th>Intern Name</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for intern in interns %}
+        <tr onclick="window.location.href='/verify_intern/{{ intern.id }}/'" style="cursor: pointer;">
+            <td>{{ intern.id }}</td>
+            <td>{{ intern.folder_name }}</td>
+            <td>{{ intern.user.username }}</td>
+
+            <!-- Yellow Verify Button -->
+            <td>
+                <a href="/verify_intern/{{ intern.id }}/" 
+                   class="btn btn-warning btn-sm fw-bold">
+                    Verify
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
     
 </div>

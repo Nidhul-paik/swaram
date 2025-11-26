@@ -1,0 +1,179 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Intern Work</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<form id="csrfForm" style="display:none;">
+    {% csrf_token %}
+</form>
+
+<div class="container mt-4">
+
+    <h2 class="fw-bold">
+        Verifying: <span class="text-primary">{{ intern.user.get_full_name|default:intern.user.username }}</span>
+    </h2>
+    <h5 class="text-muted">Folder: {{ folder_name }}</h5>
+    <hr>
+
+    <div id="alertContainer"></div>
+
+    <table class="table table-striped align-middle shadow-sm rounded">
+        <thead class="table-dark">
+            <tr>
+                <th class="text-center">SI</th>
+                <th>Audio</th>
+                <th>Transcription</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% if audio_data %}
+            {% for item in audio_data %}
+            <tr data-filename="{{ item.filename }}">
+                <td class="text-center fw-bold">{{ forloop.counter }}</td>
+
+                <td style="width:25%;">
+                    <audio controls preload="none" style="width:100%;">
+                        <source src="{{ item.audio_url }}" type="audio/wav">
+                    </audio>
+                </td>
+
+                <td>
+                    <textarea class="form-control transcription" rows="2">{{ item.transcription }}</textarea>
+                </td>
+
+                <td style="width:20%;">
+                    <button class="btn btn-success btn-sm update-btn">Save</button>
+                    <button class="btn btn-danger btn-sm delete-btn">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No audio files found.</td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+
+    <div class="text-center mb-5">
+        <button id="submitAll" class="btn btn-primary px-4 py-2">Verify Completed</button>
+    </div>
+</div>
+
+<!-- SAME JAVASCRIPT AS INTERN WORKSPACE -->
+<script>
+function showAlert(message, type='success') {
+    const alertContainer = document.getElementById('alertContainer');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    alertContainer.appendChild(alert);
+
+    setTimeout(() => alert.remove(), 5000);
+}
+
+function getCSRFToken() {
+    let token = document.querySelector('#csrfForm [name=csrfmiddlewaretoken]');
+    if (token) return token.value;
+    return '';
+}
+
+async function makeRequest(url, data) {
+    const csrf = getCSRFToken();
+    const response = await fetch("", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": csrf,
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams(data)
+    });
+    return response.json();
+}
+
+// SAVE
+document.querySelectorAll('.update-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const tr = e.target.closest('tr');
+        const filename = tr.dataset.filename;
+        const transcription = tr.querySelector('.transcription').value;
+
+        const old = e.target.textContent;
+        e.target.textContent = "Saving...";
+        e.target.disabled = true;
+
+        let res = await makeRequest("", {
+            action: "update",
+            filename: filename,
+            transcription: transcription
+        });
+
+        showAlert(res.message || res.error, res.success ? 'success' : 'danger');
+
+        setTimeout(() => {
+            e.target.textContent = old;
+            e.target.disabled = false;
+        }, 1500);
+    });
+});
+
+// DELETE
+document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const row = e.target.closest('tr');
+        const filename = row.dataset.filename;
+
+        if (!confirm("Delete this file permanently?")) return;
+
+        let old = e.target.textContent;
+        e.target.textContent = "Deleting...";
+        e.target.disabled = true;
+
+        let res = await makeRequest("", {
+            action: "delete",
+            filename: filename
+        });
+
+        if (res.success) row.remove();
+        showAlert(res.message || res.error, res.success ? 'success' : 'danger');
+
+        e.target.textContent = old;
+        e.target.disabled = false;
+    });
+});
+
+// SUBMIT ALL
+document.getElementById("submitAll").addEventListener("click", async () => {
+    if (!confirm("Are you sure you have verified all items?")) return;
+
+    let btn = document.getElementById("submitAll");
+    let old = btn.textContent;
+    btn.textContent = "Submitting...";
+    btn.disabled = true;
+
+    let res = await makeRequest("", { action: "submit" });
+
+    showAlert(res.message || res.error, res.success ? 'success' : 'danger');
+
+    if (res.success) {
+    setTimeout(() => { window.location.reload(); }, 800);
+}
+else {
+        btn.textContent = old;
+        btn.disabled = false;
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

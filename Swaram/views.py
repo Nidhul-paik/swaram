@@ -29,28 +29,6 @@ def admin_required(view_func):
     return decorated_view_func
 
 
-# # --- Authentication ---
-# def register_view(request):
-#     if request.user.is_authenticated:
-#         return redirect('landing_page')
-#     if request.method == 'POST':
-#         username = request.POST['username']
-#         full_name = request.POST['full_name']
-#         password = request.POST['password']
-#         if not username or not full_name or not password:
-#             messages.error(request, 'All fields are required.')
-#             return redirect('register')
-#         if User.objects.filter(username=username).exists():
-#             messages.warning(request, 'Username already exists.')
-#         else:
-#             user = User.objects.create_user(username=username, password=password, full_name=full_name, role='employee')
-#             messages.success(request, 'Account created! You can log in.')
-#             return redirect('login')
-#     return render(request, 'register.html')
-
-
-
-
 
 @login_required
 def logout_view(request):
@@ -1104,384 +1082,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from .models import Intern
 from filelock import FileLock 
-
-
-def delete_audio_and_row(user, filename, chunks_path, metadata_path):
-    """Helper: move deleted audio & remove from CSV."""
-    df = pd.read_csv(metadata_path)
-
-    # Find and remove matching row
-    match = df[df['filename'] == filename]
-    if not match.empty:
-        # Move file to deleted folder
-        deleted_root = os.path.join(settings.BASE_DIR, "intern_data", "deleted")
-        os.makedirs(deleted_root, exist_ok=True)
-
-        src_path = os.path.join(chunks_path, filename)
-        deleted_path = os.path.join(deleted_root, f"{user.username}_{filename}")
-
-        if os.path.exists(src_path):
-            shutil.move(src_path, deleted_path)
-
-        # Drop row and save CSV
-        df = df[df['filename'] != filename]
-        df.to_csv(metadata_path, index=False)
-
-
-
-# @login_required
-# def intern_contribution(request):
-#     user = request.user
-
-#     # Check if user is registered as intern
-#     try:
-#         intern = Intern.objects.get(user=user)
-#     except Intern.DoesNotExist:
-#         return render(request, "interns_workspace.html", {"access_denied": True})
-
-#     folder_path = os.path.join(settings.MEDIA_ROOT, intern.folder)
-#     chunks_path = os.path.join(folder_path, "05_final_chunks/")
-#     metadata_path = os.path.join(folder_path, "metadata.csv")
-
-#     # Load metadata.csv
-#     audio_data = []
-#     if os.path.exists(metadata_path):
-#         with open(metadata_path, newline='', encoding='utf-8') as csvfile:
-#             reader = csv.DictReader(csvfile)
-#             for row in reader:
-#                 filename = row["filename"].strip()
-#                 transcription = row["transcription"].strip()
-#                 if filename and os.path.exists(os.path.join(chunks_path, filename)):
-#                     audio_data.append({
-#                         "filename": filename,
-#                         "transcription": transcription
-#                     })
-
-#     # Handle actions (update, delete, submit)
-#     if request.method == "POST":
-#         action = request.POST.get("action")
-
-#         # --- Delete ---
-#         if action == "delete":
-#             filename = request.POST.get("filename")
-#             delete_folder = os.path.join(settings.BASE_DIR, "intern_data", "deleted")
-#             os.makedirs(delete_folder, exist_ok=True)
-
-#             src_file = os.path.join(chunks_path, filename)
-#             dst_file = os.path.join(delete_folder, f"{user.username}_{filename}")
-
-#             if os.path.exists(src_file):
-#                 shutil.move(src_file, dst_file)
-
-#                 # Remove row from metadata
-#                 with open(metadata_path, newline='', encoding='utf-8') as csvfile:
-#                     rows = list(csv.DictReader(csvfile))
-#                 new_rows = [r for r in rows if r["filename"].strip() != filename]
-#                 with open(metadata_path, 'w', newline='', encoding='utf-8') as csvfile:
-#                     writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
-#                     writer.writeheader()
-#                     writer.writerows(new_rows)
-
-#             return JsonResponse({"success": True})
-
-#         # --- Update ---
-#         elif action == "update":
-#             filename = request.POST.get("filename")
-#             transcription = request.POST.get("transcription")
-
-#             with open(metadata_path, newline='', encoding='utf-8') as csvfile:
-#                 rows = list(csv.DictReader(csvfile))
-#             for row in rows:
-#                 if row["filename"].strip() == filename:
-#                     row["transcription"] = transcription
-#                     break
-#             with open(metadata_path, 'w', newline='', encoding='utf-8') as csvfile:
-#                 writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
-#                 writer.writeheader()
-#                 writer.writerows(rows)
-#             return JsonResponse({"success": True})
-
-#         # --- Submit (All Done) ---
-#         elif action == "submit":
-#             verified_root = os.path.join(settings.BASE_DIR, "intern_data", "verified")
-#             os.makedirs(verified_root, exist_ok=True)
-
-#             user_verified_folder = os.path.join(verified_root, f"{user.username}_verified")
-#             os.makedirs(user_verified_folder, exist_ok=True)
-
-#             # Save metadata
-#             verified_csv = os.path.join(user_verified_folder, "metadata_verified.csv")
-#             shutil.copy2(metadata_path, verified_csv)
-
-#             # Copy chunks
-#             verified_chunks = os.path.join(user_verified_folder, "05_final_chunks")
-#             if os.path.exists(verified_chunks):
-#                 shutil.rmtree(verified_chunks)
-#             shutil.copytree(chunks_path, verified_chunks)
-
-#             return JsonResponse({"success": True, "message": "All verified data saved successfully!"})
-
-#     return render(request, "interns_workspace.html", {
-#         "access_denied": False,
-#         "audio_data": audio_data,
-#         "chunks_path": f"/media/{intern.folder}/05_final_chunks"
-#     })
-# @login_required
-# def intern_contribution(request):
-#     user = request.user
-
-#     # Check if user is registered as intern
-#     try:
-#         intern = Intern.objects.get(user=user)
-#     except Intern.DoesNotExist:
-#         return render(request, "interns_workspace.html", {"access_denied": True})
-
-#     folder_path = os.path.join(settings.MEDIA_ROOT, 'intern_data', intern.folder_name)
-#     chunks_path = os.path.join(folder_path, "05_final_chunks/")
-#     metadata_path = os.path.join(folder_path, "metadata.csv")
-
-#     lock_path = os.path.join(folder_path, ".metadata.lock")
-#     lock = FileLock(lock_path)
-
-#     # Create deleted and verified folders if they don't exist
-#     deleted_root = os.path.join(settings.BASE_DIR, "intern_data", "deleted")
-#     verified_root = os.path.join(settings.BASE_DIR, "intern_data", "verified")
-#     os.makedirs(deleted_root, exist_ok=True)
-#     os.makedirs(verified_root, exist_ok=True)
-
-#     # Load metadata.csv
-#     audio_data = []
-#     if os.path.exists(metadata_path):
-#         with open(metadata_path, newline='', encoding='utf-8') as csvfile:
-#             reader = csv.DictReader(csvfile)
-#             for row in reader:
-#                 filename = row["filename"].strip()
-#                 transcription = row["transcription"].strip()
-#                 if filename and os.path.exists(os.path.join(chunks_path, filename)):
-#                     audio_data.append({
-#                         "filename": filename,
-#                         "transcription": transcription,
-#                         "audio_url": f"/media/intern_data/{intern.folder_name}/05_final_chunks/{filename}"
-                        
-#                     })
-
-#     # Handle actions (update, delete, submit)
-#     if request.method == "POST":
-#         action = request.POST.get("action")
-
-#         # --- Delete ---
-#         if action == "delete":
-#             filename = request.POST.get("filename")
-            
-#             src_file = os.path.join(chunks_path, filename)
-#             dst_file = os.path.join(deleted_root, f"{user.username}_{filename}")
-
-#             if os.path.exists(src_file):
-#                 # Move file to deleted folder
-#                 shutil.move(src_file, dst_file)
-
-#                 # Remove row from metadata using standard CSV
-#                 if os.path.exists(metadata_path):
-#                     with open(metadata_path, 'r', newline='', encoding='utf-8') as csvfile:
-#                         reader = csv.DictReader(csvfile)
-#                         rows = list(reader)
-                    
-#                     # Filter out the deleted row
-#                     new_rows = [row for row in rows if row['filename'].strip() != filename]
-                    
-#                     # Write back to CSV
-#                     with open(metadata_path, 'w', newline='', encoding='utf-8') as csvfile:
-#                         if new_rows:
-#                             writer = csv.DictWriter(csvfile, fieldnames=new_rows[0].keys())
-#                             writer.writeheader()
-#                             writer.writerows(new_rows)
-
-#             return JsonResponse({"success": True})
-
-#         # --- Update ---
-#         elif action == "update":
-#             filename = request.POST.get("filename")
-#             transcription = request.POST.get("transcription")
-
-#             # Update using standard CSV
-#             if os.path.exists(metadata_path):
-#                 with open(metadata_path, 'r', newline='', encoding='utf-8') as csvfile:
-#                     reader = csv.DictReader(csvfile)
-#                     rows = list(reader)
-                
-#                 # Update the transcription
-#                 for row in rows:
-#                     if row['filename'].strip() == filename:
-#                         row['transcription'] = transcription
-#                         break
-                
-#                 # Write back to CSV
-#                 with open(metadata_path, 'w', newline='', encoding='utf-8') as csvfile:
-#                     if rows:
-#                         writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
-#                         writer.writeheader()
-#                         writer.writerows(rows)
-            
-#             return JsonResponse({"success": True})
-
-#         # --- Submit (All Done) ---
-#         elif action == "submit":
-#             # Create user-specific verified folder
-#             user_verified_folder = os.path.join(verified_root, f"{user.username}_verified")
-#             os.makedirs(user_verified_folder, exist_ok=True)
-
-#             # Read current metadata to get only valid files
-#             valid_files = set()
-#             if os.path.exists(metadata_path):
-#                 with open(metadata_path, 'r', newline='', encoding='utf-8') as csvfile:
-#                     # reader = csv.DictReader(csvfile)
-#                     reader = csv.DictReader(csvfile, delimiter='\t')
-#                     for row in reader:
-#                         valid_files.add(row['filename'].strip())
-
-#             # Save updated metadata (this will only contain non-deleted rows)
-#             verified_csv = os.path.join(user_verified_folder, "metadata_verified.csv")
-#             if os.path.exists(metadata_path):
-#                 shutil.copy2(metadata_path, verified_csv)
-
-#             # Copy only the audio chunks that exist in current metadata
-#             verified_chunks = os.path.join(user_verified_folder, "05_final_chunks")
-            
-#             # Remove existing verified chunks and copy fresh
-#             if os.path.exists(verified_chunks):
-#                 shutil.rmtree(verified_chunks)
-#             os.makedirs(verified_chunks, exist_ok=True)
-            
-#             if os.path.exists(chunks_path):
-#                 for filename in os.listdir(chunks_path):
-#                     # Only copy files that are in the current metadata
-#                     if filename in valid_files:
-#                         src_file = os.path.join(chunks_path, filename)
-#                         dst_file = os.path.join(verified_chunks, filename)
-#                         if os.path.isfile(src_file):
-#                             shutil.copy2(src_file, dst_file)
-
-#             return JsonResponse({"success": True, "message": "All verified data updated successfully!"})
-
-#     return render(request, "interns_workspace.html", {
-#         "access_denied": False,
-#         "audio_data": audio_data,
-#         "chunks_path": f"/media/{intern.folder_name}/05_final_chunks"
-#     })
-
-
-
-# @login_required
-# def intern_contribution(request):
-#     user = request.user
-
-#     try:
-#         intern = Intern.objects.get(user=user)
-#         print(f"=== DEBUG: User {user.username}, Folder: {intern.folder_name} ===")
-#     except Intern.DoesNotExist:
-#         return render(request, "interns_workspace.html", {"access_denied": True})
-
-#     folder_path = os.path.join(settings.MEDIA_ROOT, 'intern_data', intern.folder_name)
-#     chunks_path = os.path.join(folder_path, "05_final_chunks")
-#     metadata_path = os.path.join(folder_path, "metadata.csv")
-
-#     print(f"Folder path: {folder_path}")
-#     print(f"Folder exists: {os.path.exists(folder_path)}")
-#     print(f"Chunks path: {chunks_path}")
-#     print(f"Chunks exists: {os.path.exists(chunks_path)}")
-#     print(f"Metadata path: {metadata_path}")
-#     print(f"Metadata exists: {os.path.exists(metadata_path)}")
-
-#     # Create deleted and verified folders if they don't exist
-#     deleted_root = os.path.join(settings.BASE_DIR, "intern_data", "deleted")
-#     verified_root = os.path.join(settings.BASE_DIR, "intern_data", "verified")
-#     os.makedirs(deleted_root, exist_ok=True)
-#     os.makedirs(verified_root, exist_ok=True)
-
-#     # Load metadata.csv with detailed debugging
-#     audio_data = []
-#     if os.path.exists(metadata_path) and os.path.exists(chunks_path):
-#         try:
-#             with open(metadata_path, newline='', encoding='utf-8') as csvfile:
-#                 reader = csv.DictReader(csvfile, delimiter='\t')
-#                 print(f"CSV columns: {reader.fieldnames}")
-                
-#                 # List actual files in chunks directory
-#                 actual_files = os.listdir(chunks_path)
-#                 print(f"Actual files in chunks directory: {actual_files[:5]}...")  # First 5 files
-                
-#                 row_count = 0
-#                 for row in reader:
-#                     row_count += 1
-#                     filename = row.get("filename", "").strip()
-#                     transcription = row.get("transcription", "").strip()
-                    
-#                     if filename:
-#                         audio_file_path = os.path.join(chunks_path, filename)
-#                         file_exists = os.path.exists(audio_file_path)
-                        
-#                         if row_count <= 5:  # Debug first 5 rows
-#                             print(f"Row {row_count}: '{filename}' -> exists: {file_exists}")
-                        
-#                         if file_exists:
-#                             audio_url = f"/media/intern_data/{intern.folder_name}/05_final_chunks/{filename}"
-#                             audio_data.append({
-#                                 "filename": filename,
-#                                 "transcription": transcription,
-#                                 "audio_url": audio_url
-#                             })
-#                     else:
-#                         if row_count <= 5:
-#                             print(f"Row {row_count}: Empty filename")
-                
-#                 print(f"Total rows in CSV: {row_count}")
-#                 print(f"Audio files matched: {len(audio_data)}")
-                
-#         except Exception as e:
-#             print(f"Error reading metadata: {e}")
-#             import traceback
-#             traceback.print_exc()
-#     else:
-#         print("ERROR: Missing required paths!")
-#         if not os.path.exists(metadata_path):
-#             print("  - metadata.csv missing")
-#         if not os.path.exists(chunks_path):
-#             print("  - 05_final_chunks directory missing")
-
-#     # Handle POST requests
-#     if request.method == "POST":
-#         action = request.POST.get("action")
-
-#         if action == "delete":
-#             filename = request.POST.get("filename")
-#             # ... your delete code ...
-
-#         elif action == "update":
-#             filename = request.POST.get("filename")
-#             transcription = request.POST.get("transcription")
-#             # ... your update code ...
-
-#         elif action == "submit":
-#             # ... your submit code ...
-#             pass
-
-#     return render(request, "interns_workspace.html", {
-#         "access_denied": False,
-#         "audio_data": audio_data,
-#         "folder_name": intern.folder_name,
-#         "debug_info": {
-#             "csv_rows_processed": len(audio_data),
-#             "folder_exists": os.path.exists(folder_path),
-#             "chunks_exists": os.path.exists(chunks_path),
-#             "metadata_exists": os.path.exists(metadata_path),
-#         }
-#     })
-
-
-
-
-
-
 import os
 import csv
 import shutil
@@ -1492,6 +1092,36 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.views.decorators.csrf import ensure_csrf_cookie
 from .models import Intern
+
+# def delete_audio_and_row(user, filename, chunks_path, metadata_path):
+#     """Helper: move deleted audio & remove from CSV."""
+#     df = pd.read_csv(metadata_path)
+
+#     # Find and remove matching row
+#     match = df[df['filename'] == filename]
+#     if not match.empty:
+#         # Move file to deleted folder
+#         deleted_root = os.path.join(settings.BASE_DIR, "intern_data", "deleted")
+#         os.makedirs(deleted_root, exist_ok=True)
+
+#         src_path = os.path.join(chunks_path, filename)
+#         deleted_path = os.path.join(deleted_root, f"{user.username}_{filename}")
+
+#         if os.path.exists(src_path):
+#             shutil.move(src_path, deleted_path)
+
+#         # Drop row and save CSV
+#         df = df[df['filename'] != filename]
+#         df.to_csv(metadata_path, index=False)
+
+
+
+
+
+
+
+
+
 @login_required
 @ensure_csrf_cookie
 def intern_contribution(request):
@@ -1507,10 +1137,12 @@ def intern_contribution(request):
 
     folder_path = os.path.join(settings.MEDIA_ROOT, 'intern_data', intern.folder_name)
     chunks_path = os.path.join(folder_path, "05_final_chunks")
+    spect_path = os.path.join(folder_path, "06_spectrograms")
     metadata_path = os.path.join(folder_path, "metadata.csv")
 
     print(f"DEBUG: Folder: {folder_path} -> {os.path.exists(folder_path)}")
     print(f"DEBUG: Chunks: {chunks_path} -> {os.path.exists(chunks_path)}")
+    print(f"DEBUG: Chunks: {chunks_path} -> {os.path.exists(spect_path)}")
     print(f"DEBUG: Metadata: {metadata_path} -> {os.path.exists(metadata_path)}")
 
     # Count actual audio files
@@ -1583,13 +1215,13 @@ def intern_contribution(request):
         try:
             if action == "delete":
                 # return handle_delete(request, user, chunks_path, metadata_path)
-                return handle_delete(request, user, intern.folder_name, chunks_path, metadata_path)
+                return handle_delete(request, user, intern.folder_name, chunks_path, metadata_path, spect_path, user)
             elif action == "update":
                 return handle_update(request, user, metadata_path)
                 
             elif action == "submit":
                 # return handle_submit(request, user, chunks_path, metadata_path)
-                return handle_submit(request, user, intern.folder_name, chunks_path, metadata_path)
+                return handle_submit(request, user, intern.folder_name, chunks_path, metadata_path, spect_path, user)
             else:
                 return JsonResponse({"success": False, "error": "Unknown action"})
         except Exception as e:
@@ -1700,24 +1332,14 @@ def clean_name(name):
         return ""
     return name.replace("\ufeff", "").replace("\r", "").replace("\n", "").strip()
 
-import csv
-import os
-import time
-import shutil
-from django.conf import settings # It's good practice to have settings available
-from django.http import JsonResponse
 
-import csv
-import os
-import time
-import shutil
-from django.conf import settings
-from django.http import JsonResponse
+
+
 
 # (Your other functions like clean_name, handle_update, etc., remain the same)
 # ...
 
-def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path):
+def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path, spect_path, real_user):
     """
     Deletes a row from the intern's metadata.csv and moves the corresponding
     audio file from '05_final_chunks' to the central 'deleted' folder
@@ -1776,7 +1398,14 @@ def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path)
         os.makedirs(deleted_folder_path, exist_ok=True)
 
         # 4. Create a unique filename to prevent overwrites from different interns
-        unique_deleted_filename = f"{intern_folder_name}_{cleaned_filename}"
+        
+        if real_user.role == "admin":
+            prefix = "admin_"
+        else:
+            prefix = ""
+
+
+        unique_deleted_filename = f"{prefix}{intern_folder_name}_{cleaned_filename}"
         destination_audio_path = os.path.join(deleted_folder_path, unique_deleted_filename)
 
         # 5. Move the file
@@ -1786,6 +1415,33 @@ def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path)
         else:
             print(f"DEBUG: Audio file '{cleaned_filename}' not found in chunks folder, but removed from CSV.")
         
+
+        # --- Step 4: Move the spectrogram image to deleted_image folder ---
+
+        spectrogram_filename = cleaned_filename.replace(".wav", ".png")
+        spectrogram_path = os.path.join(spect_path, spectrogram_filename)
+
+        # Destination folder for deleted images
+        deleted_image_folder = os.path.join(settings.BASE_DIR, 'intern_data', 'deleted_image')
+        os.makedirs(deleted_image_folder, exist_ok=True)
+
+        # Unique deleted image filename
+        if real_user.role == "admin":
+            image_prefix = "admin_"
+        else:
+            image_prefix = ""
+
+        unique_deleted_image = f"{image_prefix}{intern_folder_name}_{spectrogram_filename}"
+        destination_image_path = os.path.join(deleted_image_folder, unique_deleted_image)
+
+        # Move spectrogram file
+        if os.path.exists(spectrogram_path):
+            shutil.move(spectrogram_path, destination_image_path)
+            print(f"DEBUG: Moved spectrogram '{spectrogram_path}' → '{destination_image_path}'")
+        else:
+            print(f"DEBUG: Spectrogram NOT FOUND → {spectrogram_path}")
+
+        # -----------------------------------------------------------------
         return JsonResponse({"success": True, "message": "File removed and archived successfully."})
 
     except PermissionError:
@@ -1799,55 +1455,11 @@ def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path)
         import traceback
         traceback.print_exc()
         return JsonResponse({"success": False, "error": f"An unexpected error occurred: {e}"})
-        
-# def handle_update(request, user, metadata_path):
-#     filename = request.POST.get("filename")
-#     new_transcription = request.POST.get("transcription", "")
-
-#     if not filename:
-#         return JsonResponse({"success": False, "error": "No filename provided"})
-
-#     cleaned_filename = clean_name(filename)
-#     temp_path = metadata_path + ".tmp"
-#     rows = []
-#     fieldnames = []
-#     updated = False
-
-#     try:
-#         # Read first
-#         with open(metadata_path, "r", encoding="utf-8", newline="") as infile:
-#             reader = csv.DictReader(infile)
-#             fieldnames = reader.fieldnames
-#             for row in reader:
-#                 if clean_name(row.get("filename", "")) == cleaned_filename:
-#                     row["transcription"] = new_transcription
-#                     updated = True
-#                 rows.append(row)
-
-#         if not updated:
-#             return JsonResponse({"success": False, "error": "File not found for update."})
-
-#         # Write second
-#         with open(temp_path, "w", encoding="utf-8", newline="") as outfile:
-#             # THE FIX: Add extrasaction='ignore'
-#             writer = csv.DictWriter(outfile, fieldnames=fieldnames, extrasaction='ignore')
-#             writer.writeheader()
-#             writer.writerows(rows)
-
-#         time.sleep(0.1)
-#         os.replace(temp_path, metadata_path)
-
-#         return JsonResponse({"success": True, "message": "Transcription updated."})
-
-#     except Exception as e:
-#         if os.path.exists(temp_path):
-#             os.remove(temp_path)
-#         return JsonResponse({"success": False, "error": f"An error occurred: {e}"})
-
+  
 
 from .live_progress import live_tracker
 
-def handle_update(request, user, metadata_path):
+def handle_update(request, user, metadata_path, real_user):
     filename = request.POST.get("filename")
     new_transcription = request.POST.get("transcription", "")
 
@@ -1912,28 +1524,29 @@ from django.http import JsonResponse
 # (Your other functions like handle_delete, clean_name, etc., remain the same)
 # ...
 
-def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path):
-    """
-    Saves a complete snapshot of the intern's current work to the 'verified' folder.
-    This action is non-destructive and can be performed multiple times.
-
-    1. Creates a new unique, timestamped folder in 'intern_data/verified/'.
-    2. Creates a '05_final_chunks' subdirectory inside the new folder.
-    3. Copies only the audio files listed in the current metadata.csv to the new subdirectory.
-    4. Creates a clean copy of the metadata.csv in the root of the new folder.
-    5. The original intern's working directory is NOT touched, allowing them to continue.
-    """
+def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path, spect_path, real_user):
+   
     try:
         # 1. Define Destination Paths
-        verified_base_path = os.path.join(settings.BASE_DIR, 'intern_data', 'verified')
+        # verified_base_path = os.path.join(settings.BASE_DIR, 'intern_data', 'verified')
+        # 1. Choose folder based on whether ADMIN or INTERN
+        if real_user.role == "admin":
+            verified_base_path = os.path.join(settings.BASE_DIR, 'intern_data', 'verified_by_admin')
+        else:
+            verified_base_path = os.path.join(settings.BASE_DIR, 'intern_data', 'verified')
+
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         unique_verified_folder_name = f"{timestamp}_{intern_folder_name}"
         destination_path = os.path.join(verified_base_path, unique_verified_folder_name)
 
         # 2. Create the new folder structure for the verified submission
         dest_chunks_path = os.path.join(destination_path, '05_final_chunks')
+        dest_spect_path = os.path.join(destination_path, '06_spectrograms')
         os.makedirs(dest_chunks_path, exist_ok=True)
+        os.makedirs(dest_spect_path, exist_ok=True)
         print(f"DEBUG: Created verified submission folder and chunks subdirectory: {dest_chunks_path}")
+        print(f"DEBUG: Created verified submission folder and chunks subdirectory: {dest_spect_path}")
+
 
         # 3. Read the source metadata and copy files
         if not os.path.exists(metadata_path):
@@ -1963,10 +1576,20 @@ def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path)
                 source_audio_path = os.path.join(chunks_path, filename)
                 dest_audio_path = os.path.join(dest_chunks_path, filename)
 
+                # Copy SPECTROGRAM
+                spect_filename = filename.replace(".wav", ".png")
+                source_spect = os.path.join(spect_path, spect_filename)
+                dest_spect = os.path.join(dest_spect_path, spect_filename)
+
                 if os.path.exists(source_audio_path):
                     shutil.copy2(source_audio_path, dest_audio_path)
-                    writer.writerow(row)
+                    
                     verified_audio_count += 1
+                     # Copy spectrogram if exists
+                    if os.path.exists(source_spect):
+                        shutil.copy2(source_spect, dest_spect)
+
+                    writer.writerow(row)
                 else:
                     print(f"WARNING: Audio file '{filename}' was in metadata but not found. It will not be in the final submission.")
 
@@ -1984,6 +1607,19 @@ def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path)
             "success": True,
             "message": f"Successfully saved a version with {verified_audio_count} files. You can continue working and submit again."
         })
+
+        # return JsonResponse({
+        #     "success": True,
+        #     "redirect_url": f"/verify_intern/{user.id}/",
+        #     "message": f"Successfully saved a version with {verified_audio_count} files."
+        # })
+        
+        # return JsonResponse({
+        #     "success": True,
+        #     "redirect_url": f"/verify_intern/{intern.id}/",
+        #     "message": f"Successfully saved a version with {verified_audio_count} files."
+        # })
+
 
     except Exception as e:
         import traceback
@@ -2059,10 +1695,144 @@ def interns(request):
                 assign_message = "❌ Intern does not exist."
 
     return render(request, "interns.html", {
-        "interns": Intern.objects.all(),
+        # "interns": Intern.objects.all(),
         "add_message": add_message,
-        "assign_message": assign_message
+        "assign_message": assign_message,
+        "interns" : Intern.objects.select_related('user').all()
     })
 
-def verify_intern(request):
-    return render(request, 'verify_intern.html')
+
+#----- intern contribution verifycation by admin------
+
+def load_intern_workspace(intern):
+    folder_path = os.path.join(settings.BASE_DIR, 'intern_data', 'verified', intern.folder_name)
+    chunks_path = os.path.join(folder_path, "05_final_chunks")
+    spect_path = os.path.join(folder_path, "06_spectrograms")
+    metadata_path = os.path.join(folder_path, "metadata.csv")
+
+    audio_data = []  # your CSV loader logic here
+
+    return {
+        "folder_path": folder_path,
+        "chunks_path": chunks_path,
+        "spect_path" : spect_path,
+        "metadata_path": metadata_path,
+        "audio_data": audio_data,
+        "folder_name": intern.folder_name
+    }
+
+
+def verify_intern(request, intern_id):
+    real_user = request.user
+    intern = Intern.objects.get(id=intern_id)
+
+    # Load paths for this intern
+    workspace = load_intern_workspace(intern)
+    chunks_path = workspace["chunks_path"]
+    metadata_path = workspace["metadata_path"]
+
+    print("=== VERIFY INTERN REQUEST START ===")
+    print(f"Intern: {intern.user.username}")
+    print(f"Chunks Path: {chunks_path}")
+    print(f"Metadata Path: {metadata_path}")
+
+    # -------------------------------
+    # 1️⃣   COUNT ACTUAL AUDIO FILES
+    # -------------------------------
+    actual_audio_files = []
+    if os.path.exists(chunks_path):
+        actual_audio_files = [f for f in os.listdir(chunks_path) if f.endswith(".wav")]
+        print(f"DEBUG: Actual WAV files in chunks: {len(actual_audio_files)}")
+
+    # -------------------------------
+    # 2️⃣   LOAD METADATA + MATCH AUDIO
+    # -------------------------------
+    audio_data = []
+
+    if os.path.exists(metadata_path) and os.path.exists(chunks_path):
+        try:
+            clean_metadata_file(metadata_path)
+
+            with open(metadata_path, "r", encoding="utf-8") as csvfile:
+                reader = csv.DictReader(csvfile, delimiter=",")
+                print(f"DEBUG: CSV fieldnames: {reader.fieldnames}")
+
+                total_rows = 0
+                loaded_rows = 0
+
+                for row in reader:
+                    total_rows += 1
+                    filename = row.get("filename", "").strip().replace("\r", "").replace("\n", "")
+                    transcription = row.get("transcription", "").strip()
+
+                    if not filename:
+                        continue
+
+                    full_path = os.path.join(chunks_path, filename)
+
+                    if os.path.exists(full_path):
+                        audio_data.append({
+                            "filename": filename,
+                            "transcription": transcription,
+                            "audio_url": f"/media/intern_data/{intern.folder_name}/05_final_chunks/{filename}"
+                        })
+                        loaded_rows += 1
+
+                        if loaded_rows <= 3:
+                            print(f"DEBUG: Loaded: {filename}")
+
+                print(f"DEBUG: Loaded {loaded_rows}/{total_rows} metadata rows")
+
+        except Exception as e:
+            print("DEBUG: Metadata read error:", e)
+            traceback.print_exc()
+            print("DEBUG: Using fallback metadata parser...")
+            audio_data = load_metadata_fallback(metadata_path, chunks_path, intern.folder_name)
+
+    print(f"DEBUG: Final audio_data count: {len(audio_data)}")
+    print("=== REQUEST END ===")
+
+    # -------------------------------
+    # 3️⃣   HANDLE POST ACTIONS (same as intern view)
+    # -------------------------------
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "delete":
+            return handle_delete(
+                request,
+                intern.user,
+                intern.folder_name,
+                workspace["chunks_path"],
+                workspace["metadata_path"],
+                workspace["spect_path"],
+                real_user
+            )
+            
+        elif action == "update":
+             return handle_update(
+                request,
+                intern.user,
+                workspace["metadata_path"],
+                real_user
+            )
+
+        elif action == "submit":
+            return handle_submit(
+                request,
+                intern.user,
+                intern.folder_name,
+                workspace["chunks_path"],
+                workspace["metadata_path"],
+                workspace["spect_path"],
+                real_user
+            )
+
+    # -------------------------------
+    # 4️⃣   RENDER ADMIN VERIFY PAGE
+    # -------------------------------
+    return render(request, "intern_verify.html", {
+        "intern": intern,
+        "folder_name": intern.folder_name,
+        "audio_data": audio_data
+    })
