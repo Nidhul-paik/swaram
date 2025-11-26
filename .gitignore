@@ -1,0 +1,12 @@
+.env
+sql.db
+sqlite_data.json
+/venv
+
+final_contributions/
+intern_data/
+live_progress.json
+media/
+progress_cache.json
+staticfiles/
+static/
