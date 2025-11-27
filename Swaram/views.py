@@ -1459,7 +1459,7 @@ def handle_delete(request, user, intern_folder_name, chunks_path, metadata_path,
 
 from .live_progress import live_tracker
 
-def handle_update(request, user, metadata_path, real_user):
+def handle_update(request, user, metadata_path):
     filename = request.POST.get("filename")
     new_transcription = request.POST.get("transcription", "")
 
@@ -1535,9 +1535,15 @@ def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path,
         else:
             verified_base_path = os.path.join(settings.BASE_DIR, 'intern_data', 'verified')
 
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        unique_verified_folder_name = f"{timestamp}_{intern_folder_name}"
-        destination_path = os.path.join(verified_base_path, unique_verified_folder_name)
+        # timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        # unique_verified_folder_name = f"{timestamp}_{intern_folder_name}"
+        # destination_path = os.path.join(verified_base_path, unique_verified_folder_name)
+
+        destination_path = os.path.join(verified_base_path, intern_folder_name)
+
+        # Remove old verified folder if exists (so only latest remains)
+        if os.path.exists(destination_path):
+            shutil.rmtree(destination_path)
 
         # 2. Create the new folder structure for the verified submission
         dest_chunks_path = os.path.join(destination_path, '05_final_chunks')
@@ -1599,27 +1605,11 @@ def handle_submit(request, user, intern_folder_name, chunks_path, metadata_path,
 
         print(f"DEBUG: Successfully copied {verified_audio_count} files to verified folder.")
 
-        # --- STEP 4: ARCHIVING LOGIC HAS BEEN COMPLETELY REMOVED ---
-        # The original intern folder located at os.path.dirname(metadata_path)
-        # will no longer be moved or deleted.
 
         return JsonResponse({
             "success": True,
             "message": f"Successfully saved a version with {verified_audio_count} files. You can continue working and submit again."
         })
-
-        # return JsonResponse({
-        #     "success": True,
-        #     "redirect_url": f"/verify_intern/{user.id}/",
-        #     "message": f"Successfully saved a version with {verified_audio_count} files."
-        # })
-        
-        # return JsonResponse({
-        #     "success": True,
-        #     "redirect_url": f"/verify_intern/{intern.id}/",
-        #     "message": f"Successfully saved a version with {verified_audio_count} files."
-        # })
-
 
     except Exception as e:
         import traceback
@@ -1813,8 +1803,7 @@ def verify_intern(request, intern_id):
              return handle_update(
                 request,
                 intern.user,
-                workspace["metadata_path"],
-                real_user
+                workspace["metadata_path"]
             )
 
         elif action == "submit":

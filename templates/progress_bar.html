@@ -1,5 +1,5 @@
 <!-- templates/Swaram/live_progress_bar.html -->
-<div id="liveProgressContainer" class="container-fluid bg-dark text-white py-2 border-bottom">
+<div id="liveProgressContainer" class="container-fluid bg-dark text-white py-2 border-bottom" style="position: fixed;top: 0;z-index: 2;">
     <div class="container">
         <div class="row align-items-center">
             <!-- Main Progress -->
@@ -27,19 +27,19 @@
             <div class="col-md-6">
                 <div class="row text-center">
                     <div class="col-3">
-                        <div class="border rounded p-1 bg-primary">
+                        <div class="border rounded p-1 bg-secondary">
                             <div class="fw-bold fs-6" id="liveActiveUsers">0</div>
                             <small>Active</small>
                         </div>
                     </div>
                     <div class="col-3">
-                        <div class="border rounded p-1 bg-success">
+                        <div class="border rounded p-1 bg-secondary">
                             <div class="fw-bold fs-6" id="liveSavedCount">0</div>
                             <small>Saved</small>
                         </div>
                     </div>
                     <div class="col-3">
-                        <div class="border rounded p-1 bg-info">
+                        <div class="border rounded p-1 bg-secondary">
                             <div class="fw-bold fs-6" id="liveTotalFiles">0</div>
                             <small>Total</small>
                         </div>
