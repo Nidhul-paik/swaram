@@ -89,3 +89,115 @@ def send_otp_to_email(email):
         fail_silently=False,
     )
     return otp
+
+
+
+import os
+import time
+from django.core.cache import cache
+from django.conf import settings
+
+
+class LiveGamificationTracker:
+    # Keys
+    USER_SCORE_KEY = "gamify_score_{}_{}" # user_id, date
+    ACTIVE_USERS_SET = "gamify_active_users"
+    GLOBAL_STATS_KEY = "gamify_global_stats"
+    
+    # Config
+    USER_TIMEOUT = 300 # 5 minutes offline = removed from live list
+
+    def _get_date_key(self):
+        return time.strftime("%Y%m%d") # Resets every day at midnight
+
+    def increment_score(self, user):
+        """
+        Atomically increments the user's score on the server.
+        Stable: Refreshes won't reset this number.
+        """
+        if not user.is_authenticated:
+            return 0
+
+        date_key = self._get_date_key()
+        cache_key = self.USER_SCORE_KEY.format(user.id, date_key)
+        
+        # Initialize if not exists
+        if cache.get(cache_key) is None:
+            cache.set(cache_key, 0, timeout=86400) # 24 hours
+
+        # Atomic increment (Thread safe)
+        new_score = cache.incr(cache_key)
+        
+        # Mark user as active
+        self._mark_active(user)
+        
+        return new_score
+
+    def _mark_active(self, user):
+        active_users = cache.get(self.ACTIVE_USERS_SET, set())
+        active_users.add(user.id)
+        cache.set(self.ACTIVE_USERS_SET, active_users, self.USER_TIMEOUT)
+
+    def get_live_data(self, current_user_id=None):
+        """
+        Returns stable leaderboard data.
+        """
+        active_ids = cache.get(self.ACTIVE_USERS_SET, set())
+        date_key = self._get_date_key()
+        
+        leaderboard = []
+        stale_ids = set()
+        total_saves_today = 0
+
+        for uid in active_ids:
+            # Fetch score directly from server cache
+            score = cache.get(self.USER_SCORE_KEY.format(uid, date_key))
+            
+            if score is not None:
+                # We need the username. Since we only have ID, we try to fetch from cache or DB
+                # Optimisation: For now, we assume username is not strictly needed for calculation 
+                # but we need it for display. 
+                # In a real app, you cache the username mapping too.
+                from Swaram.models import User  # or whatever your custom user model is called
+                try:
+                    u = User.objects.get(id=uid)
+                    leaderboard.append({
+                        'id': uid,
+                        'username': u.username,
+                        'count': score
+                    })
+                    total_saves_today += score
+                except User.DoesNotExist:
+                    stale_ids.add(uid)
+            else:
+                # Score expired (user inactive for 24h)
+                stale_ids.add(uid)
+
+        # Cleanup
+        if stale_ids:
+            cache.set(self.ACTIVE_USERS_SET, active_ids - stale_ids, self.USER_TIMEOUT)
+
+        # Sort: Highest Score first
+        leaderboard.sort(key=lambda x: x['count'], reverse=True)
+
+        # Calculate Rankings for the requested user
+        my_rank = 0
+        rival = None
+        
+        if current_user_id:
+            for idx, entry in enumerate(leaderboard):
+                if entry['id'] == current_user_id:
+                    my_rank = idx + 1
+                    if idx > 0:
+                        rival = leaderboard[idx - 1]
+                    break
+
+        return {
+            'active_users': leaderboard,
+            'active_count': len(leaderboard),
+            'total_saved': total_saves_today,
+            'my_rank': my_rank,
+            'rival': rival
+        }
+
+live_tracker = LiveGamificationTracker()
